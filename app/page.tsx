@@ -15,6 +15,7 @@ import InputArea from './components/InputArea';
 import LoadingState from './components/LoadingState';
 import MetaBar from './components/MetaBar';
 import StickyNav from './components/StickyNav';
+import ContextUpdateCard from './components/ContextUpdateCard';
 
 type Mode = 'council' | 'gpt-only' | 'claude-only';
 
@@ -303,6 +304,9 @@ export default function Home() {
                                 sessionCost={`$${sessionCost.toFixed(2)}`}
                                 queryCount={queryCount}
                               />
+                            )}
+                            {msg.merge_result.claude_md_update && (
+                              <ContextUpdateCard update={msg.merge_result.claude_md_update} />
                             )}
                           </>
                         ) : (

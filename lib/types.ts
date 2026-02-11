@@ -7,6 +7,13 @@ export interface Delta {
   reasoning: string;
 }
 
+// Context update for CLAUDE.md (optional, only for platform-related queries)
+export interface ClaudeMdUpdate {
+  current_status: string;
+  recent_changes: string[];
+  planned_next: string[];
+}
+
 // Result of merging GPT and Claude responses
 export interface MergeResult {
   consensus: string;
@@ -15,6 +22,7 @@ export interface MergeResult {
   unverified_assumptions: string[];
   next_steps: string[];
   decision_filter_notes: string;
+  claude_md_update?: ClaudeMdUpdate;
 }
 
 // Image attachment type
