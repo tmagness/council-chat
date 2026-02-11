@@ -1,0 +1,38 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Thread {
+  id        String    @id @default(cuid())
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  messages  Message[]
+}
+
+model Message {
+  id        String   @id @default(cuid())
+  threadId  String
+  thread    Thread   @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  role      String   // "user" | "assistant"
+  content   String   // User message or consensus for assistant
+
+  // Raw responses stored as JSON strings
+  gptResponse    String?
+  claudeResponse String?
+  mergeResult    String?  // Full MergeResult as JSON
+  arbiterReview  String?
+
+  // Metadata
+  mode           String   // "council" | "gpt-only" | "claude-only" | "degraded"
+  tokensUsed     Int      @default(0)
+  estimatedCost  Float    @default(0)
+
+  createdAt DateTime @default(now())
+
+  @@index([threadId])
+}
