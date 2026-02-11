@@ -3,7 +3,7 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
@@ -19,13 +19,13 @@ model Message {
   threadId  String
   thread    Thread   @relation(fields: [threadId], references: [id], onDelete: Cascade)
   role      String   // "user" | "assistant"
-  content   String   // User message or consensus for assistant
+  content   String   @db.Text // User message or consensus for assistant
 
   // Raw responses stored as JSON strings
-  gptResponse    String?
-  claudeResponse String?
-  mergeResult    String?  // Full MergeResult as JSON
-  arbiterReview  String?
+  gptResponse    String?  @db.Text
+  claudeResponse String?  @db.Text
+  mergeResult    String?  @db.Text // Full MergeResult as JSON
+  arbiterReview  String?  @db.Text
 
   // Metadata
   mode           String   // "council" | "gpt-only" | "claude-only" | "degraded"
