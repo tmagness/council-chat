@@ -1,5 +1,7 @@
 'use client';
 
+import { ReactNode } from 'react';
+
 type Mode = 'council' | 'gpt-only' | 'claude-only';
 
 interface HeaderProps {
@@ -7,6 +9,7 @@ interface HeaderProps {
   setMode: (mode: Mode) => void;
   arbiterEnabled: boolean;
   setArbiterEnabled: (enabled: boolean) => void;
+  children?: ReactNode;
 }
 
 export default function Header({
@@ -14,6 +17,7 @@ export default function Header({
   setMode,
   arbiterEnabled,
   setArbiterEnabled,
+  children,
 }: HeaderProps) {
   return (
     <header className="h-14 border-b border-border-primary bg-bg-secondary flex items-center justify-between px-6">
@@ -84,6 +88,9 @@ export default function Header({
             />
           </button>
         </label>
+
+        {/* Share Button (passed as children) */}
+        {children}
       </div>
     </header>
   );

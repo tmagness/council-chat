@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { UIMessage, ChatResponse, ImageAttachment } from '@/lib/types';
 import Header from './components/Header';
 import Sidebar from './components/Sidebar';
+import ShareButton from './components/ShareButton';
 import ConsensusCard from './components/ConsensusCard';
 import DeltasCard from './components/DeltasCard';
 import AssumptionsCard from './components/AssumptionsCard';
@@ -198,7 +199,11 @@ export default function Home() {
         setMode={setMode}
         arbiterEnabled={arbiterEnabled}
         setArbiterEnabled={setArbiterEnabled}
-      />
+      >
+        {currentThreadId && messages.length > 0 && (
+          <ShareButton threadId={currentThreadId} />
+        )}
+      </Header>
 
       {/* Main Content */}
       <div className="flex-1 flex overflow-hidden">
