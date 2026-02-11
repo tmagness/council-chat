@@ -225,7 +225,8 @@ export default function Home() {
           <div ref={scrollRef} className="flex-1 overflow-y-auto p-6">
             {messages.length === 0 && !loading ? (
               // Empty State - Sci-Fi Command Center
-              <EmptyState mode={mode} arbiterEnabled={arbiterEnabled} />
+              // Key forces remount when thread changes to replay animation
+              <EmptyState key={currentThreadId} mode={mode} arbiterEnabled={arbiterEnabled} />
             ) : (
               // Message History & Response
               <div className="max-w-4xl mx-auto space-y-6">
