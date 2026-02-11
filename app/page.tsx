@@ -30,6 +30,8 @@ export default function Home() {
   const [mode, setMode] = useState<Mode>('council');
   const [arbiterEnabled, setArbiterEnabled] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [sessionCost, setSessionCost] = useState(0);
+  const [queryCount, setQueryCount] = useState(0);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   // Create initial thread on mount
@@ -117,6 +119,15 @@ export default function Home() {
           estimated_cost: data.estimated_cost,
         };
         setMessages((prev) => [...prev, assistantMessage]);
+
+        // Update session cost tracking
+        if (data.estimated_cost) {
+          const costValue = parseFloat(data.estimated_cost.replace('$', ''));
+          if (!isNaN(costValue)) {
+            setSessionCost((prev) => prev + costValue);
+            setQueryCount((prev) => prev + 1);
+          }
+        }
       } else {
         console.error('Chat error:', data);
       }
@@ -220,7 +231,12 @@ export default function Home() {
                               claudeResponse={msg.claude_response || null}
                             />
                             {msg.estimated_cost && msg.mode && (
-                              <MetaBar cost={msg.estimated_cost} mode={msg.mode} />
+                              <MetaBar
+                                cost={msg.estimated_cost}
+                                mode={msg.mode}
+                                sessionCost={`$${sessionCost.toFixed(2)}`}
+                                queryCount={queryCount}
+                              />
                             )}
                           </>
                         ) : (

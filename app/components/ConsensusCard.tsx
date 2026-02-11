@@ -27,15 +27,15 @@ export default function ConsensusCard({ consensus, confidence }: ConsensusCardPr
   const config = confidenceConfig[confidence];
 
   return (
-    <div className="bg-bg-tertiary rounded-lg border-l-4 border-accent-blue p-5">
+    <div className="bg-bg-tertiary rounded-lg border-l-4 border-accent-blue border-2 border-l-4 p-5 shadow-lg">
       {/* Header */}
-      <div className="flex items-center justify-between mb-4">
-        <h3 className="text-xs font-semibold text-accent-blue uppercase tracking-wider">
+      <div className="flex items-center justify-between mb-4 pb-3 border-b-2 border-border-primary">
+        <h3 className="text-sm font-bold text-accent-blue uppercase tracking-wider">
           Consensus
         </h3>
-        <div className="flex items-center gap-2">
-          <span className={`w-2 h-2 rounded-full ${config.bg}`} />
-          <span className={`text-xs font-mono font-medium ${config.color}`}>
+        <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-bg-elevated">
+          <span className={`w-2.5 h-2.5 rounded-full ${config.bg} animate-pulse`} />
+          <span className={`text-xs font-mono font-bold ${config.color}`}>
             {config.label}
           </span>
         </div>
