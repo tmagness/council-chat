@@ -6,15 +6,9 @@ interface ShareButtonProps {
 }
 
 export default function ShareButton({ onClick, disabled }: ShareButtonProps) {
-  const handleClick = () => {
-    console.log('ShareButton clicked');
-    alert('Share button clicked!'); // DEBUG - remove later
-    onClick();
-  };
-
   return (
     <button
-      onClick={handleClick}
+      onClick={onClick}
       disabled={disabled}
       className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
         disabled

@@ -11,7 +11,6 @@ interface ShareModalProps {
 }
 
 export default function ShareModal({ isOpen, onClose, threadId, messages }: ShareModalProps) {
-  console.log('ShareModal render, isOpen:', isOpen);
   const [loading, setLoading] = useState(false);
   const [shareUrl, setShareUrl] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
