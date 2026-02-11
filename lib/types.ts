@@ -17,12 +17,19 @@ export interface MergeResult {
   decision_filter_notes: string;
 }
 
+// Image attachment type
+export interface ImageAttachment {
+  data: string; // base64 encoded
+  media_type: 'image/jpeg' | 'image/png' | 'image/gif' | 'image/webp';
+}
+
 // API request/response types
 export interface ChatRequest {
   thread_id: string;
   message: string;
   mode: 'council' | 'gpt-only' | 'claude-only';
   arbiter: boolean;
+  images?: ImageAttachment[];
 }
 
 export interface ChatResponse {
@@ -48,6 +55,7 @@ export interface UIMessage {
   id: string;
   role: 'user' | 'assistant';
   content: string;
+  images?: ImageAttachment[];
   gpt_response?: string | null;
   claude_response?: string | null;
   merge_result?: MergeResult | null;
@@ -60,4 +68,5 @@ export interface UIMessage {
 export interface HistoryMessage {
   role: 'user' | 'assistant';
   content: string;
+  images?: ImageAttachment[];
 }

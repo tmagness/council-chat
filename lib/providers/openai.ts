@@ -1,14 +1,37 @@
-import { ProviderResponse, HistoryMessage } from '../types';
+import { ProviderResponse, HistoryMessage, ImageAttachment } from '../types';
+
+type ContentPart =
+  | { type: 'text'; text: string }
+  | { type: 'image_url'; image_url: { url: string } };
 
 interface OpenAIMessage {
   role: 'system' | 'user' | 'assistant';
-  content: string;
+  content: string | ContentPart[];
 }
 
 interface OpenAIResponse {
   choices: { message: { content: string } }[];
   usage: { prompt_tokens: number; completion_tokens: number };
   error?: { message: string };
+}
+
+function buildMessageContent(text: string, images?: ImageAttachment[]): string | ContentPart[] {
+  if (!images || images.length === 0) {
+    return text;
+  }
+
+  const parts: ContentPart[] = [{ type: 'text', text }];
+
+  for (const img of images) {
+    parts.push({
+      type: 'image_url',
+      image_url: {
+        url: `data:${img.media_type};base64,${img.data}`,
+      },
+    });
+  }
+
+  return parts;
 }
 
 export async function callGPT(
@@ -20,7 +43,7 @@ export async function callGPT(
       { role: 'system', content: systemPrompt },
       ...messages.map((m) => ({
         role: m.role as 'user' | 'assistant',
-        content: m.content,
+        content: buildMessageContent(m.content, m.images),
       })),
     ];
 

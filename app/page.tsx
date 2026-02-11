@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { UIMessage, ChatResponse } from '@/lib/types';
+import { UIMessage, ChatResponse, ImageAttachment } from '@/lib/types';
 import Header from './components/Header';
 import Sidebar from './components/Sidebar';
 import ConsensusCard from './components/ConsensusCard';
@@ -66,14 +66,15 @@ export default function Home() {
     setCurrentThreadId(threadId);
   };
 
-  const handleSubmit = async (message: string) => {
+  const handleSubmit = async (message: string, images: ImageAttachment[] = []) => {
     if (!currentThreadId || loading) return;
 
     // Update thread's first message if this is the first message
+    const displayMessage = message || (images.length > 0 ? '[Image]' : '');
     setThreads((prev) =>
       prev.map((t) =>
         t.id === currentThreadId && !t.firstMessage
-          ? { ...t, firstMessage: message.slice(0, 50) + (message.length > 50 ? '...' : '') }
+          ? { ...t, firstMessage: displayMessage.slice(0, 50) + (displayMessage.length > 50 ? '...' : '') }
           : t
       )
     );
@@ -83,6 +84,7 @@ export default function Home() {
       id: `user-${Date.now()}`,
       role: 'user',
       content: message,
+      images: images.length > 0 ? images : undefined,
     };
     setMessages((prev) => [...prev, userMessage]);
     setLoading(true);
@@ -96,6 +98,7 @@ export default function Home() {
           message,
           mode,
           arbiter: arbiterEnabled,
+          images: images.length > 0 ? images : undefined,
         }),
       });
 
@@ -177,7 +180,19 @@ export default function Home() {
                       // User Message
                       <div className="flex justify-end mb-4">
                         <div className="bg-bg-tertiary rounded-lg px-4 py-3 max-w-2xl">
-                          <p className="text-sm text-text-primary">{msg.content}</p>
+                          {msg.images && msg.images.length > 0 && (
+                            <div className="flex gap-2 mb-2 flex-wrap">
+                              {msg.images.map((img, idx) => (
+                                <img
+                                  key={idx}
+                                  src={`data:${img.media_type};base64,${img.data}`}
+                                  alt={`Attachment ${idx + 1}`}
+                                  className="max-w-xs max-h-48 rounded-lg border border-border-primary"
+                                />
+                              ))}
+                            </div>
+                          )}
+                          {msg.content && <p className="text-sm text-text-primary">{msg.content}</p>}
                         </div>
                       </div>
                     ) : (

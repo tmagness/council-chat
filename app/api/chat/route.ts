@@ -6,14 +6,14 @@ import { arbiterReview } from '@/lib/merge/arbiterReview';
 import { getThreadHistory, addMessage } from '@/lib/storage/threadsRepo';
 import { GPT_SYSTEM_PROMPT, CLAUDE_SYSTEM_PROMPT } from '@/lib/merge/prompts';
 import { calculateCost, formatCost } from '@/lib/utils/costs';
-import { ChatRequest, ChatResponse, MergeResult, HistoryMessage } from '@/lib/types';
+import { ChatRequest, ChatResponse, MergeResult, HistoryMessage, ImageAttachment } from '@/lib/types';
 
 export const maxDuration = 60;
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { thread_id, message, mode, arbiter } = body as ChatRequest;
+    const { thread_id, message, mode, arbiter, images } = body as ChatRequest;
 
     // Validate input
     if (!thread_id || !message || !mode) {
@@ -34,7 +34,7 @@ export async function POST(request: NextRequest) {
     const history = await getThreadHistory(thread_id);
     const messagesWithCurrent: HistoryMessage[] = [
       ...history,
-      { role: 'user', content: message },
+      { role: 'user', content: message, images },
     ];
 
     let gptResponse: string | null = null;

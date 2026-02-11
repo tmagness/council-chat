@@ -1,14 +1,42 @@
-import { ProviderResponse, HistoryMessage } from '../types';
+import { ProviderResponse, HistoryMessage, ImageAttachment } from '../types';
+
+type ContentBlock =
+  | { type: 'text'; text: string }
+  | { type: 'image'; source: { type: 'base64'; media_type: string; data: string } };
 
 interface AnthropicMessage {
   role: 'user' | 'assistant';
-  content: string;
+  content: string | ContentBlock[];
 }
 
 interface AnthropicResponse {
   content: { type: string; text: string }[];
   usage: { input_tokens: number; output_tokens: number };
   error?: { message: string };
+}
+
+function buildMessageContent(text: string, images?: ImageAttachment[]): string | ContentBlock[] {
+  if (!images || images.length === 0) {
+    return text;
+  }
+
+  const blocks: ContentBlock[] = [];
+
+  // Images first, then text (Claude prefers this order)
+  for (const img of images) {
+    blocks.push({
+      type: 'image',
+      source: {
+        type: 'base64',
+        media_type: img.media_type,
+        data: img.data,
+      },
+    });
+  }
+
+  blocks.push({ type: 'text', text });
+
+  return blocks;
 }
 
 export async function callClaude(
@@ -18,7 +46,7 @@ export async function callClaude(
   try {
     const apiMessages: AnthropicMessage[] = messages.map((m) => ({
       role: m.role,
-      content: m.content,
+      content: buildMessageContent(m.content, m.images),
     }));
 
     const res = await fetch('https://api.anthropic.com/v1/messages', {
