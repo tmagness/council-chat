@@ -16,6 +16,7 @@ import LoadingState from './components/LoadingState';
 import MetaBar from './components/MetaBar';
 import StickyNav from './components/StickyNav';
 import ContextUpdateCard from './components/ContextUpdateCard';
+import EmptyState from './components/EmptyState';
 
 type Mode = 'council' | 'gpt-only' | 'claude-only';
 
@@ -223,21 +224,8 @@ export default function Home() {
           {/* Scrollable Content */}
           <div ref={scrollRef} className="flex-1 overflow-y-auto p-6">
             {messages.length === 0 && !loading ? (
-              // Empty State
-              <div className="h-full flex items-center justify-center">
-                <div className="text-center">
-                  <div className="w-16 h-16 rounded-full bg-bg-tertiary flex items-center justify-center mx-auto mb-4">
-                    <span className="text-2xl text-accent-blue font-mono font-bold">?</span>
-                  </div>
-                  <h2 className="text-lg font-semibold text-text-primary mb-2">
-                    Ask the Council
-                  </h2>
-                  <p className="text-sm text-text-secondary max-w-md">
-                    Submit a question to receive synthesized recommendations from GPT-4o and Claude,
-                    with disagreements highlighted and assumptions flagged.
-                  </p>
-                </div>
-              </div>
+              // Empty State - Sci-Fi Command Center
+              <EmptyState mode={mode} arbiterEnabled={arbiterEnabled} />
             ) : (
               // Message History & Response
               <div className="max-w-4xl mx-auto space-y-6">
