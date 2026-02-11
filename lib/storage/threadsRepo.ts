@@ -1,6 +1,18 @@
 import { prisma } from './db';
 import { HistoryMessage, MergeResult } from '../types';
 
+export async function listThreads() {
+  return prisma.thread.findMany({
+    orderBy: { createdAt: 'desc' },
+    include: {
+      messages: {
+        orderBy: { createdAt: 'asc' },
+        take: 1, // Only get first message for preview
+      },
+    },
+  });
+}
+
 export async function createThread(): Promise<string> {
   const thread = await prisma.thread.create({
     data: {},

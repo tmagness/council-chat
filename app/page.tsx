@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { UIMessage, ChatResponse, ImageAttachment } from '@/lib/types';
+import { UIMessage, ChatResponse, ImageAttachment, MergeResult } from '@/lib/types';
 import Header from './components/Header';
 import Sidebar from './components/Sidebar';
 import ShareButton from './components/ShareButton';
@@ -45,10 +45,76 @@ export default function Home() {
   const scrollRef = useRef<HTMLDivElement>(null);
   const sectionRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
 
-  // Create initial thread on mount
+  // Load existing threads on mount
   useEffect(() => {
-    createNewThread();
+    loadThreads();
   }, []);
+
+  const loadThreads = async () => {
+    try {
+      const res = await fetch('/api/threads');
+      const data = await res.json();
+      if (data.threads && data.threads.length > 0) {
+        setThreads(
+          data.threads.map((t: { id: string; first_message: string; created_at: string }) => ({
+            id: t.id,
+            firstMessage: t.first_message,
+            createdAt: new Date(t.created_at),
+          }))
+        );
+        // Select the most recent thread
+        setCurrentThreadId(data.threads[0].id);
+        // Load messages for that thread
+        await loadThreadMessages(data.threads[0].id);
+      } else {
+        // No existing threads, create a new one
+        await createNewThread();
+      }
+    } catch (error) {
+      console.error('Failed to load threads:', error);
+      // Fallback to creating a new thread
+      await createNewThread();
+    }
+  };
+
+  const loadThreadMessages = async (threadId: string) => {
+    try {
+      const res = await fetch(`/api/threads/${threadId}`);
+      if (!res.ok) {
+        setMessages([]);
+        return;
+      }
+      const data = await res.json();
+      if (data.messages) {
+        setMessages(
+          data.messages.map((msg: {
+            id: string;
+            role: 'user' | 'assistant';
+            content: string;
+            gpt_response?: string | null;
+            claude_response?: string | null;
+            merge_result?: MergeResult | null;
+            arbiter_review?: string | null;
+            mode?: string;
+            estimated_cost?: string;
+          }) => ({
+            id: msg.id,
+            role: msg.role,
+            content: msg.content,
+            gpt_response: msg.gpt_response,
+            claude_response: msg.claude_response,
+            merge_result: msg.merge_result,
+            arbiter_review: msg.arbiter_review,
+            mode: msg.mode,
+            estimated_cost: msg.estimated_cost,
+          }))
+        );
+      }
+    } catch (error) {
+      console.error('Failed to load thread messages:', error);
+      setMessages([]);
+    }
+  };
 
   // Scroll to bottom when messages change
   useEffect(() => {
@@ -74,9 +140,9 @@ export default function Home() {
     }
   };
 
-  const handleSelectThread = (threadId: string) => {
-    // In a full implementation, you'd fetch messages for this thread
+  const handleSelectThread = async (threadId: string) => {
     setCurrentThreadId(threadId);
+    await loadThreadMessages(threadId);
   };
 
   const handleSubmit = async (message: string, images: ImageAttachment[] = []) => {
