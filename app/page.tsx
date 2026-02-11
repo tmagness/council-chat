@@ -30,6 +30,7 @@ export default function Home() {
   const [mode, setMode] = useState<Mode>('council');
   const [arbiterEnabled, setArbiterEnabled] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [sessionCost, setSessionCost] = useState(0);
   const [queryCount, setQueryCount] = useState(0);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -90,8 +91,12 @@ export default function Home() {
     };
     setMessages((prev) => [...prev, userMessage]);
     setLoading(true);
+    setError(null);
 
     try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 120000); // 2 minute timeout
+
       const res = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -102,9 +107,12 @@ export default function Home() {
           arbiter: arbiterEnabled,
           images: images.length > 0 ? images : undefined,
         }),
+        signal: controller.signal,
       });
 
-      const data: ChatResponse = await res.json();
+      clearTimeout(timeoutId);
+
+      const data = await res.json();
 
       if (res.ok) {
         const assistantMessage: UIMessage = {
@@ -129,10 +137,17 @@ export default function Home() {
           }
         }
       } else {
-        console.error('Chat error:', data);
+        const errorMsg = data.error || `Request failed with status ${res.status}`;
+        console.error('Chat error:', errorMsg);
+        setError(errorMsg);
       }
-    } catch (error) {
-      console.error('Failed to send message:', error);
+    } catch (err) {
+      console.error('Failed to send message:', err);
+      if (err instanceof Error && err.name === 'AbortError') {
+        setError('Request timed out. The image may be too large or the servers are busy. Try a smaller image or try again.');
+      } else {
+        setError('Failed to send message. Please check your connection and try again.');
+      }
     } finally {
       setLoading(false);
     }
@@ -264,6 +279,37 @@ export default function Home() {
 
                 {/* Loading State */}
                 {loading && <LoadingState />}
+
+                {/* Error State */}
+                {error && !loading && (
+                  <div className="bg-accent-red/10 border-2 border-accent-red rounded-lg p-4">
+                    <div className="flex items-start gap-3">
+                      <svg
+                        className="w-5 h-5 text-accent-red flex-shrink-0 mt-0.5"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                        />
+                      </svg>
+                      <div className="flex-1">
+                        <h4 className="text-sm font-semibold text-accent-red mb-1">Error</h4>
+                        <p className="text-sm text-text-primary">{error}</p>
+                        <button
+                          onClick={() => setError(null)}
+                          className="mt-2 text-xs text-accent-blue hover:underline"
+                        >
+                          Dismiss
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </div>

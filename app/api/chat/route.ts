@@ -16,9 +16,17 @@ export async function POST(request: NextRequest) {
     const { thread_id, message, mode, arbiter, images } = body as ChatRequest;
 
     // Validate input
-    if (!thread_id || !message || !mode) {
+    if (!thread_id || !mode) {
       return NextResponse.json(
-        { error: 'Missing required fields: thread_id, message, mode' },
+        { error: 'Missing required fields: thread_id, mode' },
+        { status: 400 }
+      );
+    }
+
+    // Require either a message or images
+    if (!message && (!images || images.length === 0)) {
+      return NextResponse.json(
+        { error: 'Either a message or images are required' },
         { status: 400 }
       );
     }
@@ -146,7 +154,7 @@ export async function POST(request: NextRequest) {
     // Save user message
     await addMessage(thread_id, {
       role: 'user',
-      content: message,
+      content: message || '[Image attachment]',
       mode: finalMode,
       tokensUsed: 0,
       estimatedCost: 0,
@@ -180,8 +188,9 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(response);
   } catch (error) {
     console.error('Chat endpoint error:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Internal server error';
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { error: `Server error: ${errorMessage}` },
       { status: 500 }
     );
   }
