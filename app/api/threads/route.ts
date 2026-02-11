@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { createThread, listThreads } from '@/lib/storage/threadsRepo';
+import { createThread, listThreads, deleteAllThreads } from '@/lib/storage/threadsRepo';
 
 export async function GET() {
   try {
@@ -28,6 +28,19 @@ export async function POST() {
     console.error('Failed to create thread:', error);
     return NextResponse.json(
       { error: 'Failed to create thread' },
+      { status: 500 }
+    );
+  }
+}
+
+export async function DELETE() {
+  try {
+    await deleteAllThreads();
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error('Failed to delete all threads:', error);
+    return NextResponse.json(
+      { error: 'Failed to delete threads' },
       { status: 500 }
     );
   }

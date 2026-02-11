@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getThread } from '@/lib/storage/threadsRepo';
+import { getThread, deleteThread } from '@/lib/storage/threadsRepo';
 import { MergeResult } from '@/lib/types';
 
 export async function GET(
@@ -42,6 +42,23 @@ export async function GET(
     console.error('Failed to get thread:', error);
     return NextResponse.json(
       { error: 'Failed to get thread' },
+      { status: 500 }
+    );
+  }
+}
+
+export async function DELETE(
+  _request: NextRequest,
+  { params }: { params: Promise<{ threadId: string }> }
+) {
+  try {
+    const { threadId } = await params;
+    await deleteThread(threadId);
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error('Failed to delete thread:', error);
+    return NextResponse.json(
+      { error: 'Failed to delete thread' },
       { status: 500 }
     );
   }

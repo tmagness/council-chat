@@ -145,6 +145,36 @@ export default function Home() {
     await loadThreadMessages(threadId);
   };
 
+  const handleDeleteThread = async (threadId: string) => {
+    try {
+      await fetch(`/api/threads/${threadId}`, { method: 'DELETE' });
+      setThreads((prev) => prev.filter((t) => t.id !== threadId));
+      // If we deleted the current thread, select another one or create new
+      if (currentThreadId === threadId) {
+        const remaining = threads.filter((t) => t.id !== threadId);
+        if (remaining.length > 0) {
+          setCurrentThreadId(remaining[0].id);
+          await loadThreadMessages(remaining[0].id);
+        } else {
+          await createNewThread();
+        }
+      }
+    } catch (error) {
+      console.error('Failed to delete thread:', error);
+    }
+  };
+
+  const handleDeleteAllThreads = async () => {
+    try {
+      await fetch('/api/threads', { method: 'DELETE' });
+      setThreads([]);
+      setMessages([]);
+      await createNewThread();
+    } catch (error) {
+      console.error('Failed to delete all threads:', error);
+    }
+  };
+
   const handleSubmit = async (message: string, images: ImageAttachment[] = []) => {
     if (!currentThreadId || loading) return;
 
@@ -284,6 +314,8 @@ export default function Home() {
           activeThreadId={currentThreadId}
           onSelectThread={handleSelectThread}
           onNewThread={createNewThread}
+          onDeleteThread={handleDeleteThread}
+          onDeleteAllThreads={handleDeleteAllThreads}
         />
 
         {/* Main Response Area */}

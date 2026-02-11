@@ -60,6 +60,16 @@ export async function addMessage(threadId: string, data: AddMessageData) {
   });
 }
 
+export async function deleteThread(threadId: string) {
+  return prisma.thread.delete({
+    where: { id: threadId },
+  });
+}
+
+export async function deleteAllThreads() {
+  return prisma.thread.deleteMany({});
+}
+
 // Returns user messages + consensus only (for blind independence)
 export async function getThreadHistory(threadId: string): Promise<HistoryMessage[]> {
   const thread = await prisma.thread.findUnique({
