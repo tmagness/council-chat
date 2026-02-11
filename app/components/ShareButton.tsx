@@ -8,6 +8,7 @@ interface ShareButtonProps {
 export default function ShareButton({ onClick, disabled }: ShareButtonProps) {
   const handleClick = () => {
     console.log('ShareButton clicked');
+    alert('Share button clicked!'); // DEBUG - remove later
     onClick();
   };
 
