@@ -1,63 +1,90 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { UIMessage, MergeResult, ChatResponse } from '@/lib/types';
+import { UIMessage, ChatResponse } from '@/lib/types';
+import Header from './components/Header';
+import Sidebar from './components/Sidebar';
+import ConsensusCard from './components/ConsensusCard';
+import DeltasCard from './components/DeltasCard';
+import AssumptionsCard from './components/AssumptionsCard';
+import NextStepsCard from './components/NextStepsCard';
+import DecisionFiltersCard from './components/DecisionFiltersCard';
+import ArbiterCard from './components/ArbiterCard';
+import RawResponses from './components/RawResponses';
+import InputArea from './components/InputArea';
+import LoadingState from './components/LoadingState';
+import MetaBar from './components/MetaBar';
 
 type Mode = 'council' | 'gpt-only' | 'claude-only';
 
-// Confidence badge colors
-const confidenceColors = {
-  high: '#22c55e',
-  medium: '#eab308',
-  low: '#ef4444',
-};
+interface Thread {
+  id: string;
+  firstMessage: string;
+  createdAt: Date;
+}
 
 export default function Home() {
-  const [threadId, setThreadId] = useState<string | null>(null);
+  const [threads, setThreads] = useState<Thread[]>([]);
+  const [currentThreadId, setCurrentThreadId] = useState<string | null>(null);
   const [messages, setMessages] = useState<UIMessage[]>([]);
-  const [inputText, setInputText] = useState('');
   const [mode, setMode] = useState<Mode>('council');
   const [arbiterEnabled, setArbiterEnabled] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({});
-  const chatContainerRef = useRef<HTMLDivElement>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
 
-  // Create new thread on mount
+  // Create initial thread on mount
   useEffect(() => {
-    async function createThread() {
-      try {
-        const res = await fetch('/api/threads', { method: 'POST' });
-        const data = await res.json();
-        setThreadId(data.thread_id);
-      } catch (error) {
-        console.error('Failed to create thread:', error);
-      }
-    }
-    createThread();
+    createNewThread();
   }, []);
 
-  // Scroll to bottom when new messages arrive
+  // Scroll to bottom when messages change
   useEffect(() => {
-    if (chatContainerRef.current) {
-      chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
-  }, [messages]);
+  }, [messages, loading]);
 
-  const toggleSection = (key: string) => {
-    setExpandedSections((prev) => ({ ...prev, [key]: !prev[key] }));
+  const createNewThread = async () => {
+    try {
+      const res = await fetch('/api/threads', { method: 'POST' });
+      const data = await res.json();
+      const newThread: Thread = {
+        id: data.thread_id,
+        firstMessage: '',
+        createdAt: new Date(),
+      };
+      setThreads((prev) => [newThread, ...prev]);
+      setCurrentThreadId(data.thread_id);
+      setMessages([]);
+    } catch (error) {
+      console.error('Failed to create thread:', error);
+    }
   };
 
-  const handleSubmit = async () => {
-    if (!inputText.trim() || !threadId || loading) return;
+  const handleSelectThread = (threadId: string) => {
+    // In a full implementation, you'd fetch messages for this thread
+    setCurrentThreadId(threadId);
+  };
 
+  const handleSubmit = async (message: string) => {
+    if (!currentThreadId || loading) return;
+
+    // Update thread's first message if this is the first message
+    setThreads((prev) =>
+      prev.map((t) =>
+        t.id === currentThreadId && !t.firstMessage
+          ? { ...t, firstMessage: message.slice(0, 50) + (message.length > 50 ? '...' : '') }
+          : t
+      )
+    );
+
+    // Add user message
     const userMessage: UIMessage = {
       id: `user-${Date.now()}`,
       role: 'user',
-      content: inputText,
+      content: message,
     };
-
     setMessages((prev) => [...prev, userMessage]);
-    setInputText('');
     setLoading(true);
 
     try {
@@ -65,8 +92,8 @@ export default function Home() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          thread_id: threadId,
-          message: userMessage.content,
+          thread_id: currentThreadId,
+          message,
           mode,
           arbiter: arbiterEnabled,
         }),
@@ -97,247 +124,127 @@ export default function Home() {
     }
   };
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      handleSubmit();
-    }
-  };
-
-  // Render the structured merge result
-  const renderMergeResult = (merge: MergeResult, msgId: string) => {
-    const hasDeltas = merge.deltas && merge.deltas.length > 0;
-    const hasAssumptions = merge.unverified_assumptions && merge.unverified_assumptions.length > 0;
-    const hasNextSteps = merge.next_steps && merge.next_steps.length > 0;
-
-    return (
-      <>
-        {/* Consensus - Main recommendation */}
-        <div className="consensus">
-          <div className="consensus-header">
-            <span>Recommendation</span>
-            <span
-              className="confidence-badge"
-              style={{ backgroundColor: confidenceColors[merge.confidence] }}
-            >
-              {merge.confidence} confidence
-            </span>
-          </div>
-          <div className="message-content">{merge.consensus}</div>
-        </div>
-
-        {/* Deltas - Points of disagreement */}
-        {hasDeltas && (
-          <div className="deltas">
-            <div className="deltas-header">Points of Disagreement</div>
-            {merge.deltas.map((delta, i) => (
-              <div key={i} className="delta-item">
-                <div className="delta-topic">{delta.topic}</div>
-                <div className="delta-positions">
-                  <div className={delta.recommended === 'gpt' ? 'winner' : ''}>
-                    <strong>GPT:</strong> {delta.gpt_position}
-                    {delta.recommended === 'gpt' && <span className="winner-badge">Selected</span>}
-                  </div>
-                  <div className={delta.recommended === 'claude' ? 'winner' : ''}>
-                    <strong>Claude:</strong> {delta.claude_position}
-                    {delta.recommended === 'claude' && <span className="winner-badge">Selected</span>}
-                  </div>
-                  <div className="delta-reasoning">
-                    <strong>Reasoning:</strong> {delta.reasoning}
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {/* Unverified Assumptions - Warning section */}
-        {hasAssumptions && (
-          <div className="assumptions">
-            <div className="assumptions-header">Unverified Assumptions</div>
-            <ul>
-              {merge.unverified_assumptions.map((assumption, i) => (
-                <li key={i}>{assumption}</li>
-              ))}
-            </ul>
-          </div>
-        )}
-
-        {/* Next Steps - Actionable items */}
-        {hasNextSteps && (
-          <div className="next-steps">
-            <div className="next-steps-header">Next Steps</div>
-            <ol>
-              {merge.next_steps.map((step, i) => (
-                <li key={i}>{step}</li>
-              ))}
-            </ol>
-          </div>
-        )}
-
-        {/* Decision Filter Notes - Collapsible */}
-        {merge.decision_filter_notes && (
-          <div className="collapsible">
-            <div
-              className="collapsible-header"
-              onClick={() => toggleSection(`filters-${msgId}`)}
-            >
-              {expandedSections[`filters-${msgId}`] ? '▼' : '▶'} Decision Filter Analysis
-            </div>
-            {expandedSections[`filters-${msgId}`] && (
-              <div className="collapsible-content">{merge.decision_filter_notes}</div>
-            )}
-          </div>
-        )}
-      </>
-    );
-  };
-
-  const renderMessage = (msg: UIMessage) => {
-    if (msg.role === 'user') {
-      return (
-        <div key={msg.id} className="message user">
-          <div className="message-header">
-            <span className="message-role">You</span>
-          </div>
-          <div className="message-content">{msg.content}</div>
-        </div>
-      );
-    }
-
-    const hasMultipleResponses = msg.gpt_response && msg.claude_response;
-    const hasMerge = msg.merge_result;
-
-    return (
-      <div key={msg.id} className="message assistant">
-        <div className="message-header">
-          <span className="message-role">
-            Council{' '}
-            {msg.mode && (
-              <span className={`mode-badge ${msg.mode === 'degraded' ? 'degraded' : ''}`}>
-                {msg.mode}
-              </span>
-            )}
-          </span>
-          {msg.estimated_cost && <span className="message-cost">{msg.estimated_cost}</span>}
-        </div>
-
-        {hasMerge ? (
-          <>
-            {renderMergeResult(msg.merge_result!, msg.id)}
-
-            {/* Arbiter Review */}
-            {msg.arbiter_review && (
-              <div className="arbiter-review">
-                <div className="arbiter-header">Arbiter Review</div>
-                <div className="message-content">{msg.arbiter_review}</div>
-              </div>
-            )}
-          </>
-        ) : (
-          <div className="message-content">{msg.content}</div>
-        )}
-
-        {/* Raw responses - always collapsible */}
-        {hasMultipleResponses && (
-          <div className="collapsible">
-            <div
-              className="collapsible-header"
-              onClick={() => toggleSection(`gpt-${msg.id}`)}
-            >
-              {expandedSections[`gpt-${msg.id}`] ? '▼' : '▶'} GPT-4o Response
-            </div>
-            {expandedSections[`gpt-${msg.id}`] && (
-              <div className="collapsible-content">{msg.gpt_response}</div>
-            )}
-
-            <div
-              className="collapsible-header"
-              onClick={() => toggleSection(`claude-${msg.id}`)}
-            >
-              {expandedSections[`claude-${msg.id}`] ? '▼' : '▶'} Claude Response
-            </div>
-            {expandedSections[`claude-${msg.id}`] && (
-              <div className="collapsible-content">{msg.claude_response}</div>
-            )}
-          </div>
-        )}
-      </div>
-    );
-  };
+  // Get the latest assistant message for display
+  const latestAssistantMessage = [...messages].reverse().find((m) => m.role === 'assistant');
 
   return (
-    <main className="container">
-      <header className="header">
-        <h1>AI Council</h1>
-        <p>Collaborative decision-making with GPT-4o and Claude</p>
-      </header>
+    <div className="h-screen flex flex-col bg-bg-primary">
+      {/* Header */}
+      <Header
+        mode={mode}
+        setMode={setMode}
+        arbiterEnabled={arbiterEnabled}
+        setArbiterEnabled={setArbiterEnabled}
+      />
 
-      <div className="controls">
-        <div className="mode-selector">
-          <button
-            className={`mode-btn ${mode === 'council' ? 'active' : ''}`}
-            onClick={() => setMode('council')}
-          >
-            Council
-          </button>
-          <button
-            className={`mode-btn ${mode === 'gpt-only' ? 'active' : ''}`}
-            onClick={() => setMode('gpt-only')}
-          >
-            GPT Only
-          </button>
-          <button
-            className={`mode-btn ${mode === 'claude-only' ? 'active' : ''}`}
-            onClick={() => setMode('claude-only')}
-          >
-            Claude Only
-          </button>
-        </div>
-
-        <label className="arbiter-toggle">
-          <input
-            type="checkbox"
-            checked={arbiterEnabled}
-            onChange={(e) => setArbiterEnabled(e.target.checked)}
-            disabled={mode !== 'council'}
-          />
-          Enable Arbiter Review
-        </label>
-      </div>
-
-      <div className="chat-container" ref={chatContainerRef}>
-        {messages.length === 0 ? (
-          <div className="empty-state">
-            <p>Send a message to start the council deliberation</p>
-          </div>
-        ) : (
-          messages.map(renderMessage)
-        )}
-        {loading && (
-          <div className="loading">
-            <div className="spinner" />
-            <span>Council is deliberating...</span>
-          </div>
-        )}
-      </div>
-
-      <div className="input-container">
-        <textarea
-          value={inputText}
-          onChange={(e) => setInputText(e.target.value)}
-          onKeyDown={handleKeyDown}
-          placeholder="Ask the council a question..."
-          disabled={loading || !threadId}
+      {/* Main Content */}
+      <div className="flex-1 flex overflow-hidden">
+        {/* Sidebar */}
+        <Sidebar
+          threads={threads}
+          activeThreadId={currentThreadId}
+          onSelectThread={handleSelectThread}
+          onNewThread={createNewThread}
         />
-        <button
-          className="send-btn"
-          onClick={handleSubmit}
-          disabled={loading || !inputText.trim() || !threadId}
-        >
-          Send
-        </button>
+
+        {/* Main Response Area */}
+        <main className="flex-1 flex flex-col overflow-hidden">
+          {/* Scrollable Content */}
+          <div ref={scrollRef} className="flex-1 overflow-y-auto p-6">
+            {messages.length === 0 && !loading ? (
+              // Empty State
+              <div className="h-full flex items-center justify-center">
+                <div className="text-center">
+                  <div className="w-16 h-16 rounded-full bg-bg-tertiary flex items-center justify-center mx-auto mb-4">
+                    <span className="text-2xl text-accent-blue font-mono font-bold">?</span>
+                  </div>
+                  <h2 className="text-lg font-semibold text-text-primary mb-2">
+                    Ask the Council
+                  </h2>
+                  <p className="text-sm text-text-secondary max-w-md">
+                    Submit a question to receive synthesized recommendations from GPT-4o and Claude,
+                    with disagreements highlighted and assumptions flagged.
+                  </p>
+                </div>
+              </div>
+            ) : (
+              // Message History & Response
+              <div className="max-w-4xl mx-auto space-y-6">
+                {/* Previous Messages */}
+                {messages.map((msg) => (
+                  <div key={msg.id}>
+                    {msg.role === 'user' ? (
+                      // User Message
+                      <div className="flex justify-end mb-4">
+                        <div className="bg-bg-tertiary rounded-lg px-4 py-3 max-w-2xl">
+                          <p className="text-sm text-text-primary">{msg.content}</p>
+                        </div>
+                      </div>
+                    ) : (
+                      // Assistant Response
+                      <div className="space-y-4">
+                        {msg.merge_result ? (
+                          <>
+                            <ConsensusCard
+                              consensus={msg.merge_result.consensus}
+                              confidence={msg.merge_result.confidence}
+                            />
+                            <DeltasCard deltas={msg.merge_result.deltas} />
+                            <AssumptionsCard
+                              assumptions={msg.merge_result.unverified_assumptions}
+                            />
+                            <NextStepsCard steps={msg.merge_result.next_steps} />
+                            <DecisionFiltersCard
+                              notes={msg.merge_result.decision_filter_notes}
+                            />
+                            {msg.arbiter_review && (
+                              <ArbiterCard review={msg.arbiter_review} />
+                            )}
+                            <RawResponses
+                              gptResponse={msg.gpt_response || null}
+                              claudeResponse={msg.claude_response || null}
+                            />
+                            {msg.estimated_cost && msg.mode && (
+                              <MetaBar cost={msg.estimated_cost} mode={msg.mode} />
+                            )}
+                          </>
+                        ) : (
+                          // Single model response (non-council mode)
+                          <div className="bg-bg-tertiary rounded-lg border-l-4 border-text-secondary p-5">
+                            <div className="flex items-center justify-between mb-3">
+                              <h3 className="text-xs font-semibold text-text-secondary uppercase tracking-wider">
+                                {msg.mode === 'gpt-only' ? 'GPT-4o' : 'Claude'} Response
+                              </h3>
+                              {msg.estimated_cost && (
+                                <span className="text-xs font-mono text-text-muted">
+                                  {msg.estimated_cost}
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-sm text-text-primary font-mono whitespace-pre-wrap leading-relaxed">
+                              {msg.content}
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                ))}
+
+                {/* Loading State */}
+                {loading && <LoadingState />}
+              </div>
+            )}
+          </div>
+
+          {/* Input Area */}
+          <InputArea
+            onSubmit={handleSubmit}
+            disabled={!currentThreadId}
+            loading={loading}
+          />
+        </main>
       </div>
-    </main>
+    </div>
   );
 }
