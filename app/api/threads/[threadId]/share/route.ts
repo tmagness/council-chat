@@ -22,7 +22,7 @@ export async function POST(
     const token = await createShareToken(threadId);
 
     // Build share URL
-    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://council-chat.vercel.app';
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://council-chat-roan.vercel.app';
     const shareUrl = `${baseUrl}/share/${token}`;
 
     return NextResponse.json({ share_url: shareUrl });
