@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { UIMessage, ChatResponse, ImageAttachment } from '@/lib/types';
 import Header from './components/Header';
 import Sidebar from './components/Sidebar';
@@ -14,6 +14,7 @@ import RawResponses from './components/RawResponses';
 import InputArea from './components/InputArea';
 import LoadingState from './components/LoadingState';
 import MetaBar from './components/MetaBar';
+import StickyNav from './components/StickyNav';
 
 type Mode = 'council' | 'gpt-only' | 'claude-only';
 
@@ -33,7 +34,9 @@ export default function Home() {
   const [error, setError] = useState<string | null>(null);
   const [sessionCost, setSessionCost] = useState(0);
   const [queryCount, setQueryCount] = useState(0);
+  const [showStickyNav, setShowStickyNav] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const sectionRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
 
   // Create initial thread on mount
   useEffect(() => {
@@ -156,6 +159,35 @@ export default function Home() {
   // Get the latest assistant message for display
   const latestAssistantMessage = [...messages].reverse().find((m) => m.role === 'assistant');
 
+  // Handle scroll to show/hide sticky nav
+  useEffect(() => {
+    const handleScroll = () => {
+      if (!scrollRef.current || !sectionRefs.current.consensus) return;
+
+      const consensusRect = sectionRefs.current.consensus.getBoundingClientRect();
+      const scrollContainerRect = scrollRef.current.getBoundingClientRect();
+
+      // Show sticky nav when consensus card is scrolled above the viewport
+      setShowStickyNav(consensusRect.bottom < scrollContainerRect.top + 100);
+    };
+
+    const scrollContainer = scrollRef.current;
+    if (scrollContainer) {
+      scrollContainer.addEventListener('scroll', handleScroll);
+      return () => scrollContainer.removeEventListener('scroll', handleScroll);
+    }
+  }, [messages]);
+
+  // Jump to section handler
+  const handleJumpTo = useCallback((section: string) => {
+    const element = sectionRefs.current[section];
+    if (element && scrollRef.current) {
+      const scrollContainer = scrollRef.current;
+      const elementTop = element.offsetTop - scrollContainer.offsetTop - 20;
+      scrollContainer.scrollTo({ top: elementTop, behavior: 'smooth' });
+    }
+  }, []);
+
   return (
     <div className="h-screen flex flex-col bg-bg-primary">
       {/* Header */}
@@ -178,6 +210,15 @@ export default function Home() {
 
         {/* Main Response Area */}
         <main className="flex-1 flex flex-col overflow-hidden">
+          {/* Sticky Navigation */}
+          {latestAssistantMessage?.merge_result && (
+            <StickyNav
+              mergeResult={latestAssistantMessage.merge_result}
+              visible={showStickyNav}
+              onJumpTo={handleJumpTo}
+            />
+          )}
+
           {/* Scrollable Content */}
           <div ref={scrollRef} className="flex-1 overflow-y-auto p-6">
             {messages.length === 0 && !loading ? (
@@ -226,25 +267,35 @@ export default function Home() {
                       <div className="space-y-4">
                         {msg.merge_result ? (
                           <>
-                            <ConsensusCard
-                              consensus={msg.merge_result.consensus}
-                              confidence={msg.merge_result.confidence}
-                            />
-                            <DeltasCard deltas={msg.merge_result.deltas} />
-                            <AssumptionsCard
-                              assumptions={msg.merge_result.unverified_assumptions}
-                            />
-                            <NextStepsCard steps={msg.merge_result.next_steps} />
+                            <div ref={(el) => { sectionRefs.current.consensus = el; }}>
+                              <ConsensusCard
+                                consensus={msg.merge_result.consensus}
+                                confidence={msg.merge_result.confidence}
+                              />
+                            </div>
+                            <div ref={(el) => { sectionRefs.current.deltas = el; }}>
+                              <DeltasCard deltas={msg.merge_result.deltas} />
+                            </div>
+                            <div ref={(el) => { sectionRefs.current.assumptions = el; }}>
+                              <AssumptionsCard
+                                assumptions={msg.merge_result.unverified_assumptions}
+                              />
+                            </div>
+                            <div ref={(el) => { sectionRefs.current.nextsteps = el; }}>
+                              <NextStepsCard steps={msg.merge_result.next_steps} />
+                            </div>
                             <DecisionFiltersCard
                               notes={msg.merge_result.decision_filter_notes}
                             />
                             {msg.arbiter_review && (
                               <ArbiterCard review={msg.arbiter_review} />
                             )}
-                            <RawResponses
-                              gptResponse={msg.gpt_response || null}
-                              claudeResponse={msg.claude_response || null}
-                            />
+                            <div ref={(el) => { sectionRefs.current.raw = el; }}>
+                              <RawResponses
+                                gptResponse={msg.gpt_response || null}
+                                claudeResponse={msg.claude_response || null}
+                              />
+                            </div>
                             {msg.estimated_cost && msg.mode && (
                               <MetaBar
                                 cost={msg.estimated_cost}

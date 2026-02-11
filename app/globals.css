@@ -154,3 +154,19 @@
 .animate-bounce {
   animation: bounce-gentle 1s ease-in-out infinite;
 }
+
+/* Slide down animation for sticky nav */
+@keyframes slide-down {
+  from {
+    opacity: 0;
+    transform: translateY(-100%);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-slide-down {
+  animation: slide-down 200ms ease-out;
+}
