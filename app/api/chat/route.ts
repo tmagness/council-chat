@@ -4,6 +4,7 @@ import { callClaude } from '@/lib/providers/anthropic';
 import { mergeCouncil } from '@/lib/merge/mergeCouncil';
 import { arbiterReview } from '@/lib/merge/arbiterReview';
 import { getThreadHistory, addMessage } from '@/lib/storage/threadsRepo';
+import { getProjectContext } from '@/lib/storage/configRepo';
 import { GPT_SYSTEM_PROMPT, CLAUDE_SYSTEM_PROMPT } from '@/lib/merge/prompts';
 import { calculateCost, formatCost } from '@/lib/utils/costs';
 import { ChatRequest, ChatResponse, MergeResult, HistoryMessage, ImageAttachment } from '@/lib/types';
@@ -40,7 +41,11 @@ export async function POST(request: NextRequest) {
 
     // Get thread history (user messages + consensus only)
     const history = await getThreadHistory(thread_id);
+
+    // Fetch and prepend project context if available
+    const projectContext = await getProjectContext();
     const messagesWithCurrent: HistoryMessage[] = [
+      ...(projectContext ? [{ role: 'user' as const, content: `[PROJECT CONTEXT]\n${projectContext}` }] : []),
       ...history,
       { role: 'user', content: message, images },
     ];

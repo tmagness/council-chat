@@ -47,3 +47,9 @@ model ShareToken {
 
   @@index([token])
 }
+
+model Config {
+  key       String   @id
+  value     String   @db.Text
+  updatedAt DateTime @updatedAt
+}
