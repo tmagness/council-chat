@@ -8,6 +8,8 @@ import { GPT_SYSTEM_PROMPT, CLAUDE_SYSTEM_PROMPT } from '@/lib/merge/prompts';
 import { calculateCost, formatCost } from '@/lib/utils/costs';
 import { ChatRequest, ChatResponse, MergeResult, HistoryMessage } from '@/lib/types';
 
+export const maxDuration = 60;
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();

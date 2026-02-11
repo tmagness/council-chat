@@ -1,15 +1,14 @@
-import OpenAI from 'openai';
 import { ProviderResponse, HistoryMessage } from '../types';
 
-let client: OpenAI | null = null;
+interface OpenAIMessage {
+  role: 'system' | 'user' | 'assistant';
+  content: string;
+}
 
-function getClient(): OpenAI {
-  if (!client) {
-    client = new OpenAI({
-      apiKey: process.env.OPENAI_API_KEY,
-    });
-  }
-  return client;
+interface OpenAIResponse {
+  choices: { message: { content: string } }[];
+  usage: { prompt_tokens: number; completion_tokens: number };
+  error?: { message: string };
 }
 
 export async function callGPT(
@@ -17,28 +16,43 @@ export async function callGPT(
   messages: HistoryMessage[]
 ): Promise<ProviderResponse | null> {
   try {
-    const response = await getClient().chat.completions.create({
-      model: 'gpt-4o',
-      messages: [
-        { role: 'system', content: systemPrompt },
-        ...messages.map((m) => ({
-          role: m.role as 'user' | 'assistant',
-          content: m.content,
-        })),
-      ],
-      temperature: 0.7,
-      max_tokens: 4096,
+    const apiMessages: OpenAIMessage[] = [
+      { role: 'system', content: systemPrompt },
+      ...messages.map((m) => ({
+        role: m.role as 'user' | 'assistant',
+        content: m.content,
+      })),
+    ];
+
+    const res = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
+      },
+      body: JSON.stringify({
+        model: 'gpt-4o',
+        messages: apiMessages,
+        temperature: 0.7,
+        max_tokens: 4096,
+      }),
     });
 
-    const content = response.choices[0]?.message?.content;
+    const data: OpenAIResponse = await res.json();
+
+    if (!res.ok) {
+      console.error('GPT API error:', data.error?.message);
+      return null;
+    }
+
+    const content = data.choices[0]?.message?.content;
     if (!content) {
       console.error('GPT returned empty response');
       return null;
     }
 
     const tokensUsed =
-      (response.usage?.prompt_tokens ?? 0) +
-      (response.usage?.completion_tokens ?? 0);
+      (data.usage?.prompt_tokens ?? 0) + (data.usage?.completion_tokens ?? 0);
 
     return {
       response: content,
