@@ -54,7 +54,7 @@ export async function callGPT(
         'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
       },
       body: JSON.stringify({
-        model: 'gpt-4o',
+        model: 'gpt-5.2',
         messages: apiMessages,
         temperature: 0.7,
         max_tokens: 4096,

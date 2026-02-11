@@ -303,7 +303,7 @@ export default function Home() {
                           <div className="bg-bg-tertiary rounded-lg border-l-4 border-text-secondary p-5">
                             <div className="flex items-center justify-between mb-3">
                               <h3 className="text-xs font-semibold text-text-secondary uppercase tracking-wider">
-                                {msg.mode === 'gpt-only' ? 'GPT-4o' : 'Claude'} Response
+                                {msg.mode === 'gpt-only' ? 'GPT-5.2' : 'Claude'} Response
                               </h3>
                               {msg.estimated_cost && (
                                 <span className="text-xs font-mono text-text-muted">

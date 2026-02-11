@@ -12,7 +12,7 @@ infrastructure systems architect working in oil & gas field operations.
 - **Language**: TypeScript
 - **Hosting**: Vercel
 - **Database**: Vercel Postgres + Prisma
-- **Models**: OpenAI GPT-4o + Anthropic Claude Sonnet
+- **Models**: OpenAI GPT-5.2 + Anthropic Claude Sonnet
 - **Merge model**: Claude Sonnet (runs merge and arbiter passes)
 - **Styling**: Tailwind CSS v4
 - **Fonts**: JetBrains Mono (data/output) + IBM Plex Sans (UI/labels)

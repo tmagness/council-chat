@@ -106,7 +106,7 @@ export default function EmptyState({ mode, arbiterEnabled }: EmptyStateProps) {
           {/* GPT Status */}
           <div className={`flex items-center gap-2 transition-all duration-200 ${showStatus[0] ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-2'}`}>
             <span className={`w-2 h-2 rounded-full ${gptStatus.color === 'text-accent-green' ? 'bg-accent-green animate-status-pulse' : 'bg-text-muted'}`} />
-            <span className="text-text-secondary">GPT-4o</span>
+            <span className="text-text-secondary">GPT-5.2</span>
             <span className={gptStatus.color}>{gptStatus.status}</span>
           </div>
 
