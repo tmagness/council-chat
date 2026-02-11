@@ -5,6 +5,7 @@ import { UIMessage, ChatResponse, ImageAttachment } from '@/lib/types';
 import Header from './components/Header';
 import Sidebar from './components/Sidebar';
 import ShareButton from './components/ShareButton';
+import ShareModal from './components/ShareModal';
 import SettingsModal from './components/SettingsModal';
 import ConsensusCard from './components/ConsensusCard';
 import DeltasCard from './components/DeltasCard';
@@ -40,6 +41,7 @@ export default function Home() {
   const [queryCount, setQueryCount] = useState(0);
   const [showStickyNav, setShowStickyNav] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [shareOpen, setShareOpen] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const sectionRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
 
@@ -204,7 +206,7 @@ export default function Home() {
         onOpenSettings={() => setSettingsOpen(true)}
       >
         {currentThreadId && messages.length > 0 && (
-          <ShareButton threadId={currentThreadId} />
+          <ShareButton onClick={() => setShareOpen(true)} />
         )}
       </Header>
 
@@ -377,6 +379,16 @@ export default function Home() {
 
       {/* Settings Modal */}
       <SettingsModal isOpen={settingsOpen} onClose={() => setSettingsOpen(false)} />
+
+      {/* Share Modal */}
+      {currentThreadId && (
+        <ShareModal
+          isOpen={shareOpen}
+          onClose={() => setShareOpen(false)}
+          threadId={currentThreadId}
+          messages={messages}
+        />
+      )}
     </div>
   );
 }
