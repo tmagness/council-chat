@@ -150,9 +150,21 @@ body {
 }
 
 .consensus-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
   font-weight: 600;
   color: var(--accent-blue);
   margin-bottom: 0.5rem;
+}
+
+.confidence-badge {
+  font-size: 0.75rem;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  color: #000;
+  font-weight: 600;
+  text-transform: uppercase;
 }
 
 .collapsible {
@@ -218,6 +230,85 @@ body {
 .delta-positions {
   font-size: 0.875rem;
   color: var(--text-secondary);
+}
+
+.delta-positions > div {
+  margin-bottom: 0.5rem;
+  padding: 0.5rem;
+  border-radius: 4px;
+}
+
+.delta-positions > div.winner {
+  background: rgba(34, 197, 94, 0.1);
+  border-left: 3px solid var(--accent-green);
+}
+
+.winner-badge {
+  display: inline-block;
+  margin-left: 0.5rem;
+  padding: 0.125rem 0.375rem;
+  font-size: 0.625rem;
+  background: var(--accent-green);
+  color: #000;
+  border-radius: 3px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.delta-reasoning {
+  margin-top: 0.5rem;
+  padding: 0.5rem;
+  background: var(--bg-tertiary);
+  border-radius: 4px;
+  font-style: italic;
+}
+
+.assumptions {
+  margin-top: 1rem;
+  padding: 1rem;
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid #ef4444;
+  border-radius: 8px;
+}
+
+.assumptions-header {
+  font-weight: 600;
+  color: #ef4444;
+  margin-bottom: 0.5rem;
+}
+
+.assumptions ul {
+  margin: 0;
+  padding-left: 1.25rem;
+}
+
+.assumptions li {
+  margin-bottom: 0.25rem;
+  color: var(--text-secondary);
+}
+
+.next-steps {
+  margin-top: 1rem;
+  padding: 1rem;
+  background: rgba(59, 130, 246, 0.1);
+  border: 1px solid var(--accent-blue);
+  border-radius: 8px;
+}
+
+.next-steps-header {
+  font-weight: 600;
+  color: var(--accent-blue);
+  margin-bottom: 0.5rem;
+}
+
+.next-steps ol {
+  margin: 0;
+  padding-left: 1.25rem;
+}
+
+.next-steps li {
+  margin-bottom: 0.5rem;
+  color: var(--text-primary);
 }
 
 .arbiter-review {

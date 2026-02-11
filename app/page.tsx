@@ -5,6 +5,13 @@ import { UIMessage, MergeResult, ChatResponse } from '@/lib/types';
 
 type Mode = 'council' | 'gpt-only' | 'claude-only';
 
+// Confidence badge colors
+const confidenceColors = {
+  high: '#22c55e',
+  medium: '#eab308',
+  low: '#ef4444',
+};
+
 export default function Home() {
   const [threadId, setThreadId] = useState<string | null>(null);
   const [messages, setMessages] = useState<UIMessage[]>([]);
@@ -97,6 +104,95 @@ export default function Home() {
     }
   };
 
+  // Render the structured merge result
+  const renderMergeResult = (merge: MergeResult, msgId: string) => {
+    const hasDeltas = merge.deltas && merge.deltas.length > 0;
+    const hasAssumptions = merge.unverified_assumptions && merge.unverified_assumptions.length > 0;
+    const hasNextSteps = merge.next_steps && merge.next_steps.length > 0;
+
+    return (
+      <>
+        {/* Consensus - Main recommendation */}
+        <div className="consensus">
+          <div className="consensus-header">
+            <span>Recommendation</span>
+            <span
+              className="confidence-badge"
+              style={{ backgroundColor: confidenceColors[merge.confidence] }}
+            >
+              {merge.confidence} confidence
+            </span>
+          </div>
+          <div className="message-content">{merge.consensus}</div>
+        </div>
+
+        {/* Deltas - Points of disagreement */}
+        {hasDeltas && (
+          <div className="deltas">
+            <div className="deltas-header">Points of Disagreement</div>
+            {merge.deltas.map((delta, i) => (
+              <div key={i} className="delta-item">
+                <div className="delta-topic">{delta.topic}</div>
+                <div className="delta-positions">
+                  <div className={delta.recommended === 'gpt' ? 'winner' : ''}>
+                    <strong>GPT:</strong> {delta.gpt_position}
+                    {delta.recommended === 'gpt' && <span className="winner-badge">Selected</span>}
+                  </div>
+                  <div className={delta.recommended === 'claude' ? 'winner' : ''}>
+                    <strong>Claude:</strong> {delta.claude_position}
+                    {delta.recommended === 'claude' && <span className="winner-badge">Selected</span>}
+                  </div>
+                  <div className="delta-reasoning">
+                    <strong>Reasoning:</strong> {delta.reasoning}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Unverified Assumptions - Warning section */}
+        {hasAssumptions && (
+          <div className="assumptions">
+            <div className="assumptions-header">Unverified Assumptions</div>
+            <ul>
+              {merge.unverified_assumptions.map((assumption, i) => (
+                <li key={i}>{assumption}</li>
+              ))}
+            </ul>
+          </div>
+        )}
+
+        {/* Next Steps - Actionable items */}
+        {hasNextSteps && (
+          <div className="next-steps">
+            <div className="next-steps-header">Next Steps</div>
+            <ol>
+              {merge.next_steps.map((step, i) => (
+                <li key={i}>{step}</li>
+              ))}
+            </ol>
+          </div>
+        )}
+
+        {/* Decision Filter Notes - Collapsible */}
+        {merge.decision_filter_notes && (
+          <div className="collapsible">
+            <div
+              className="collapsible-header"
+              onClick={() => toggleSection(`filters-${msgId}`)}
+            >
+              {expandedSections[`filters-${msgId}`] ? '▼' : '▶'} Decision Filter Analysis
+            </div>
+            {expandedSections[`filters-${msgId}`] && (
+              <div className="collapsible-content">{merge.decision_filter_notes}</div>
+            )}
+          </div>
+        )}
+      </>
+    );
+  };
+
   const renderMessage = (msg: UIMessage) => {
     if (msg.role === 'user') {
       return (
@@ -111,7 +207,6 @@ export default function Home() {
 
     const hasMultipleResponses = msg.gpt_response && msg.claude_response;
     const hasMerge = msg.merge_result;
-    const hasDeltas = msg.merge_result?.deltas && msg.merge_result.deltas.length > 0;
 
     return (
       <div key={msg.id} className="message assistant">
@@ -129,27 +224,9 @@ export default function Home() {
 
         {hasMerge ? (
           <>
-            <div className="consensus">
-              <div className="consensus-header">Consensus</div>
-              <div className="message-content">{msg.merge_result!.consensus}</div>
-            </div>
+            {renderMergeResult(msg.merge_result!, msg.id)}
 
-            {hasDeltas && (
-              <div className="deltas">
-                <div className="deltas-header">Points of Disagreement</div>
-                {msg.merge_result!.deltas.map((delta, i) => (
-                  <div key={i} className="delta-item">
-                    <div className="delta-topic">{delta.topic}</div>
-                    <div className="delta-positions">
-                      <div><strong>GPT:</strong> {delta.gpt_position}</div>
-                      <div><strong>Claude:</strong> {delta.claude_position}</div>
-                      <div><strong>Resolution:</strong> {delta.resolution}</div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-
+            {/* Arbiter Review */}
             {msg.arbiter_review && (
               <div className="arbiter-review">
                 <div className="arbiter-header">Arbiter Review</div>
@@ -161,6 +238,7 @@ export default function Home() {
           <div className="message-content">{msg.content}</div>
         )}
 
+        {/* Raw responses - always collapsible */}
         {hasMultipleResponses && (
           <div className="collapsible">
             <div

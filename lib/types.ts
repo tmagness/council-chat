@@ -3,15 +3,18 @@ export interface Delta {
   topic: string;
   gpt_position: string;
   claude_position: string;
-  resolution: string;
+  recommended: 'gpt' | 'claude' | 'neither';
+  reasoning: string;
 }
 
 // Result of merging GPT and Claude responses
 export interface MergeResult {
   consensus: string;
+  confidence: 'high' | 'medium' | 'low';
   deltas: Delta[];
-  confidence: number; // 0-1 scale
-  summary: string;
+  unverified_assumptions: string[];
+  next_steps: string[];
+  decision_filter_notes: string;
 }
 
 // API request/response types

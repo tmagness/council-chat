@@ -86,13 +86,13 @@ export async function POST(request: NextRequest) {
           mergeResult = mergeOutput.result;
           totalClaudeTokens += mergeOutput.tokens_used;
 
-          // Arbiter review if requested
+          // Arbiter review if requested - pass full merge result for critique
           if (arbiter) {
             const arbiterOutput = await arbiterReview(
               message,
               gptResponse,
               claudeResponse,
-              mergeResult.consensus
+              mergeResult
             );
 
             if (arbiterOutput) {
