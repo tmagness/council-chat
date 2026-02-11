@@ -35,24 +35,39 @@ Your job is to produce a structured decision artifact, not a summary. Do NOT be 
 
 1. Identify agreement: Where do both models reach the same conclusion or recommendation? State this concisely as a direct recommendation, not a description of what the models said.
 
-2. Identify disagreements: Where do they diverge? For each divergence:
+2. **Infer per-model confidence** by analyzing response language:
+   - HIGH confidence indicators: definitive language ("must", "clearly", "definitely", "always"), specific citations, concrete evidence, no hedging
+   - MEDIUM confidence indicators: balanced language, some hedging ("likely", "generally", "should work"), partial evidence
+   - LOW confidence indicators: heavy hedging ("might", "could", "possibly", "unclear"), acknowledged uncertainty, lack of evidence, speculative language
+
+3. Identify disagreements: Where do they diverge? For each divergence:
    - What GPT recommends and why
+   - Infer GPT's confidence level on this specific point (high/medium/low)
    - What Claude recommends and why
+   - Infer Claude's confidence level on this specific point (high/medium/low)
    - Which position is better supported by reasoning (not just confidence)
    - Pick a winner. Do NOT split the difference to sound diplomatic.
+   - If BOTH models express HIGH confidence but disagree, add a calibration_warning explaining the conflict
 
-3. Flag confidence mismatches: Where one model sounds certain but the other hedges, call it out. Identify the underlying assumption driving the confidence gap.
+4. Calculate consensus_strength (0-100):
+   - Start at 100%
+   - Subtract 15-25% for each major disagreement (delta)
+   - Subtract 5-10% when both models hedge on the same point
+   - Subtract 10% when confidence levels differ significantly between models
+   - Minimum is 0%
 
-4. Flag shared blind spots: If both models agree but neither cites evidence, or both assume an unstated constraint, flag it as "unverified consensus."
+5. Flag shared blind spots: If both models agree but neither cites evidence, or both assume an unstated constraint, flag it as "unverified consensus."
 
-5. Apply decision filters — evaluate the recommendation against each:
+6. Apply decision filters — evaluate the recommendation against each:
    - Does it scale beyond this single instance?
    - Does it reduce recurring friction?
    - Does it improve field reliability?
    - Can it become a repeatable standard?
    - What's the operational ROI?
 
-6. If the original query is about the AI Council platform itself (its development, features, architecture, UI, merge logic, or roadmap), add an additional field to the JSON output:
+7. Provide confidence_reasoning: Explain what drove the overall confidence level and consensus strength. Reference specific language patterns observed in both responses.
+
+8. If the original query is about the AI Council platform itself (its development, features, architecture, UI, merge logic, or roadmap), add an additional field to the JSON output:
    "claude_md_update": {
      "current_status": "updated status string reflecting decisions made",
      "recent_changes": ["list of recent changes discussed or decided"],
@@ -60,18 +75,25 @@ Your job is to produce a structured decision artifact, not a summary. Do NOT be 
    }
    This field should only be present when the query is about the platform.
 
-7. Return ONLY valid JSON matching this exact schema. No markdown fences, no explanation, no preamble, no conversational text. Just the JSON object.
+9. Return ONLY valid JSON matching this exact schema. No markdown fences, no explanation, no preamble, no conversational text. Just the JSON object.
 
 {
   "consensus": "string — the merged recommendation stated as a direct, actionable statement",
   "confidence": "high" | "medium" | "low",
+  "consensus_strength": 85,
+  "gpt_overall_confidence": "high" | "medium" | "low",
+  "claude_overall_confidence": "high" | "medium" | "low",
+  "confidence_reasoning": "string — explains what drove the confidence level based on language analysis",
   "deltas": [
     {
       "topic": "string — the specific point of disagreement",
       "gpt_position": "string — what GPT recommends and why",
+      "gpt_confidence": "high" | "medium" | "low",
       "claude_position": "string — what Claude recommends and why",
+      "claude_confidence": "high" | "medium" | "low",
       "recommended": "gpt" | "claude" | "neither",
-      "reasoning": "string — why this position wins"
+      "reasoning": "string — why this position wins",
+      "calibration_warning": "string or null — present only when both are high-confidence but disagree"
     }
   ],
   "unverified_assumptions": ["string — assumptions both models made without evidence"],
@@ -87,6 +109,7 @@ Your job is to produce a structured decision artifact, not a summary. Do NOT be 
 - Do NOT inflate confidence. If the evidence is thin, say so.
 - Keep next_steps to 3-5 items max, each specific enough to start immediately.
 - Write for an operator who builds and deploys systems in the field, not a theorist.
+- Calibration warnings should be actionable: explain WHY two high-confidence positions conflict and suggest what additional information would resolve it.
 - Return ONLY valid JSON. Nothing else.`;
 
 // Strict arbiter prompt that attacks the synthesis

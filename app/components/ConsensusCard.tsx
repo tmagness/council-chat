@@ -1,30 +1,30 @@
 'use client';
 
+import { useState } from 'react';
+import { ConfidenceLevel } from '@/lib/types';
+import ConfidenceIndicator, {
+  ConsensusStrengthBar,
+  ModelAgreement,
+} from './ConfidenceIndicator';
+
 interface ConsensusCardProps {
   consensus: string;
-  confidence: 'high' | 'medium' | 'low';
+  confidence: ConfidenceLevel;
+  consensusStrength: number;
+  gptOverallConfidence: ConfidenceLevel;
+  claudeOverallConfidence: ConfidenceLevel;
+  confidenceReasoning: string;
 }
 
-const confidenceConfig = {
-  high: {
-    color: 'text-accent-green',
-    bg: 'bg-accent-green',
-    label: 'HIGH',
-  },
-  medium: {
-    color: 'text-accent-amber',
-    bg: 'bg-accent-amber',
-    label: 'MEDIUM',
-  },
-  low: {
-    color: 'text-accent-red',
-    bg: 'bg-accent-red',
-    label: 'LOW',
-  },
-};
-
-export default function ConsensusCard({ consensus, confidence }: ConsensusCardProps) {
-  const config = confidenceConfig[confidence];
+export default function ConsensusCard({
+  consensus,
+  confidence,
+  consensusStrength,
+  gptOverallConfidence,
+  claudeOverallConfidence,
+  confidenceReasoning,
+}: ConsensusCardProps) {
+  const [showReasoning, setShowReasoning] = useState(false);
 
   return (
     <div className="bg-bg-tertiary rounded-lg border-l-4 border-accent-blue border-2 border-l-4 p-5 shadow-lg">
@@ -33,18 +33,46 @@ export default function ConsensusCard({ consensus, confidence }: ConsensusCardPr
         <h3 className="text-sm font-bold text-accent-blue uppercase tracking-wider">
           Consensus
         </h3>
-        <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-bg-elevated">
-          <span className={`w-2.5 h-2.5 rounded-full ${config.bg} animate-pulse`} />
-          <span className={`text-xs font-mono font-bold ${config.color}`}>
-            {config.label}
-          </span>
-        </div>
+        <ConfidenceIndicator level={confidence} />
       </div>
 
       {/* Content */}
-      <p className="text-text-primary leading-relaxed font-mono text-sm">
+      <p className="text-text-primary leading-relaxed font-mono text-sm mb-4">
         {consensus}
       </p>
+
+      {/* Consensus Strength Bar */}
+      <div className="mb-4">
+        <ConsensusStrengthBar strength={consensusStrength} />
+      </div>
+
+      {/* Model Agreement */}
+      <div className="mb-4">
+        <ModelAgreement
+          gptConfidence={gptOverallConfidence}
+          claudeConfidence={claudeOverallConfidence}
+        />
+      </div>
+
+      {/* Confidence Reasoning (collapsible) */}
+      <div className="border-t border-border-secondary pt-3">
+        <button
+          onClick={() => setShowReasoning(!showReasoning)}
+          className="flex items-center gap-2 text-xs text-text-secondary hover:text-text-primary transition-colors"
+        >
+          <span
+            className={`transform transition-transform ${showReasoning ? 'rotate-90' : ''}`}
+          >
+            &#9654;
+          </span>
+          <span className="font-medium">Why this confidence level</span>
+        </button>
+        {showReasoning && (
+          <p className="mt-2 text-sm text-text-secondary leading-relaxed pl-4 border-l-2 border-border-secondary">
+            {confidenceReasoning}
+          </p>
+        )}
+      </div>
     </div>
   );
 }

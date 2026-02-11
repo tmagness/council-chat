@@ -271,6 +271,10 @@ export default function Home() {
                               <ConsensusCard
                                 consensus={msg.merge_result.consensus}
                                 confidence={msg.merge_result.confidence}
+                                consensusStrength={msg.merge_result.consensus_strength}
+                                gptOverallConfidence={msg.merge_result.gpt_overall_confidence}
+                                claudeOverallConfidence={msg.merge_result.claude_overall_confidence}
+                                confidenceReasoning={msg.merge_result.confidence_reasoning}
                               />
                             </div>
                             <div ref={(el) => { sectionRefs.current.deltas = el; }}>

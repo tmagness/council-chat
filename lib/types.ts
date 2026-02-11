@@ -1,10 +1,16 @@
+// Confidence level type
+export type ConfidenceLevel = 'high' | 'medium' | 'low';
+
 // Delta represents a point of disagreement between models
 export interface Delta {
   topic: string;
   gpt_position: string;
+  gpt_confidence: ConfidenceLevel;
   claude_position: string;
+  claude_confidence: ConfidenceLevel;
   recommended: 'gpt' | 'claude' | 'neither';
   reasoning: string;
+  calibration_warning?: string;
 }
 
 // Context update for CLAUDE.md (optional, only for platform-related queries)
@@ -17,7 +23,11 @@ export interface ClaudeMdUpdate {
 // Result of merging GPT and Claude responses
 export interface MergeResult {
   consensus: string;
-  confidence: 'high' | 'medium' | 'low';
+  confidence: ConfidenceLevel;
+  consensus_strength: number;
+  gpt_overall_confidence: ConfidenceLevel;
+  claude_overall_confidence: ConfidenceLevel;
+  confidence_reasoning: string;
   deltas: Delta[];
   unverified_assumptions: string[];
   next_steps: string[];

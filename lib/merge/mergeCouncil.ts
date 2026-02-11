@@ -39,6 +39,8 @@ function extractJSON(text: string): string {
   return trimmed;
 }
 
+const CONFIDENCE_LEVELS = ['high', 'medium', 'low'];
+
 /**
  * Validate that parsed object matches MergeResult schema
  */
@@ -49,9 +51,16 @@ function validateMergeResult(obj: unknown): obj is MergeResult {
   // Required string fields
   if (typeof o.consensus !== 'string') return false;
   if (typeof o.decision_filter_notes !== 'string') return false;
+  if (typeof o.confidence_reasoning !== 'string') return false;
 
   // Confidence must be one of the allowed values
-  if (!['high', 'medium', 'low'].includes(o.confidence as string)) return false;
+  if (!CONFIDENCE_LEVELS.includes(o.confidence as string)) return false;
+  if (!CONFIDENCE_LEVELS.includes(o.gpt_overall_confidence as string)) return false;
+  if (!CONFIDENCE_LEVELS.includes(o.claude_overall_confidence as string)) return false;
+
+  // Consensus strength must be a number between 0 and 100
+  if (typeof o.consensus_strength !== 'number') return false;
+  if (o.consensus_strength < 0 || o.consensus_strength > 100) return false;
 
   // Arrays must exist
   if (!Array.isArray(o.deltas)) return false;
@@ -67,6 +76,11 @@ function validateMergeResult(obj: unknown): obj is MergeResult {
     if (typeof d.claude_position !== 'string') return false;
     if (!['gpt', 'claude', 'neither'].includes(d.recommended as string)) return false;
     if (typeof d.reasoning !== 'string') return false;
+    // Validate per-delta confidence levels
+    if (!CONFIDENCE_LEVELS.includes(d.gpt_confidence as string)) return false;
+    if (!CONFIDENCE_LEVELS.includes(d.claude_confidence as string)) return false;
+    // calibration_warning is optional, but if present must be a string
+    if (d.calibration_warning !== undefined && d.calibration_warning !== null && typeof d.calibration_warning !== 'string') return false;
   }
 
   // Validate array contents are strings
@@ -137,7 +151,11 @@ export async function mergeCouncil(
     const retryMessage = `Your previous response was not valid JSON or did not match the required schema. Return ONLY the JSON object with these exact fields:
 - consensus (string)
 - confidence ("high" | "medium" | "low")
-- deltas (array)
+- consensus_strength (number 0-100)
+- gpt_overall_confidence ("high" | "medium" | "low")
+- claude_overall_confidence ("high" | "medium" | "low")
+- confidence_reasoning (string)
+- deltas (array with gpt_confidence, claude_confidence, and optional calibration_warning per delta)
 - unverified_assumptions (array of strings)
 - next_steps (array of strings)
 - decision_filter_notes (string)

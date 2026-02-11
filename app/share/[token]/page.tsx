@@ -96,6 +96,10 @@ export default async function SharedThreadPage({ params }: SharedThreadPageProps
                       <ConsensusCard
                         consensus={msg.merge_result.consensus}
                         confidence={msg.merge_result.confidence}
+                        consensusStrength={msg.merge_result.consensus_strength}
+                        gptOverallConfidence={msg.merge_result.gpt_overall_confidence}
+                        claudeOverallConfidence={msg.merge_result.claude_overall_confidence}
+                        confidenceReasoning={msg.merge_result.confidence_reasoning}
                       />
                       <DeltasCard deltas={msg.merge_result.deltas} />
                       <AssumptionsCard
