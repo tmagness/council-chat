@@ -68,7 +68,7 @@ export default function RawResponses({
             <div className="flex items-center gap-2 mb-3">
               <div className="w-2 h-2 rounded-full bg-accent-green"></div>
               <span className="text-xs font-semibold text-text-secondary uppercase tracking-wider">
-                GPT-5.2
+                GPT-4o
               </span>
             </div>
             <div className="overflow-y-auto max-h-[400px]">
@@ -103,7 +103,7 @@ export default function RawResponses({
               <div className="flex items-center gap-2 mb-3">
                 <div className="w-2 h-2 rounded-full bg-accent-green"></div>
                 <span className="text-xs font-semibold text-text-secondary uppercase tracking-wider">
-                  GPT-5.2 Response
+                  GPT-4o Response
                 </span>
               </div>
               <div className="overflow-y-auto max-h-[300px]">
@@ -161,7 +161,7 @@ function CollapsedView({
             <div className="flex items-center gap-2">
               <div className="w-2 h-2 rounded-full bg-accent-green"></div>
               <span className="text-sm font-medium text-text-secondary">
-                GPT-5.2 Response
+                GPT-4o Response
               </span>
             </div>
             <svg
