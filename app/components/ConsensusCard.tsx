@@ -14,6 +14,7 @@ interface ConsensusCardProps {
   gptOverallConfidence: ConfidenceLevel;
   claudeOverallConfidence: ConfidenceLevel;
   confidenceReasoning: string;
+  isSupercharged?: boolean;
 }
 
 export default function ConsensusCard({
@@ -23,16 +24,33 @@ export default function ConsensusCard({
   gptOverallConfidence,
   claudeOverallConfidence,
   confidenceReasoning,
+  isSupercharged = false,
 }: ConsensusCardProps) {
   const [showReasoning, setShowReasoning] = useState(false);
 
   return (
-    <div className="bg-bg-tertiary rounded-lg border-l-4 border-accent-blue border-2 border-l-4 p-5 shadow-lg">
+    <div className={`rounded-lg border-2 border-l-4 p-5 shadow-lg ${
+      isSupercharged
+        ? 'bg-amber-950/20 border-amber-500/50 border-l-amber-500'
+        : 'bg-bg-tertiary border-accent-blue/30 border-l-accent-blue'
+    }`}>
       {/* Header */}
       <div className="flex items-center justify-between mb-4 pb-3 border-b-2 border-border-primary">
-        <h3 className="text-sm font-bold text-accent-blue uppercase tracking-wider">
-          Consensus
-        </h3>
+        <div className="flex items-center gap-3">
+          <h3 className={`text-sm font-bold uppercase tracking-wider ${
+            isSupercharged ? 'text-amber-400' : 'text-accent-blue'
+          }`}>
+            Consensus
+          </h3>
+          {isSupercharged && (
+            <span className="flex items-center gap-1.5 px-2 py-0.5 bg-amber-500/20 rounded text-xs font-medium text-amber-400">
+              <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M13 3L4 14h7v7l9-11h-7V3z" />
+              </svg>
+              Premium
+            </span>
+          )}
+        </div>
         <ConfidenceIndicator level={confidence} />
       </div>
 

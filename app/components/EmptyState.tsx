@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import CouncilEmblem from './CouncilEmblem';
 
 interface EmptyStateProps {
-  mode: 'council' | 'gpt-only' | 'claude-only';
+  mode: 'council' | 'gpt-only' | 'claude-only' | 'supercharged';
   arbiterEnabled: boolean;
 }
 
@@ -12,9 +12,10 @@ export default function EmptyState({ mode, arbiterEnabled }: EmptyStateProps) {
   const [showEmblem, setShowEmblem] = useState(false);
   const [typedText, setTypedText] = useState('');
   const [showSubtext, setShowSubtext] = useState(false);
-  const [showStatus, setShowStatus] = useState([false, false, false]);
+  const [showStatus, setShowStatus] = useState([false, false, false, false]);
 
-  const title = 'COUNCIL ONLINE';
+  const isSupercharged = mode === 'supercharged';
+  const title = isSupercharged ? 'SUPERCHARGED' : 'COUNCIL ONLINE';
 
   useEffect(() => {
     // Boot sequence animation
@@ -39,15 +40,16 @@ export default function EmptyState({ mode, arbiterEnabled }: EmptyStateProps) {
     timers.push(setTimeout(() => setShowSubtext(true), 100 + title.length * 50 + 200));
 
     // 4. Stagger status indicators
-    timers.push(setTimeout(() => setShowStatus([true, false, false]), 100 + title.length * 50 + 400));
-    timers.push(setTimeout(() => setShowStatus([true, true, false]), 100 + title.length * 50 + 500));
-    timers.push(setTimeout(() => setShowStatus([true, true, true]), 100 + title.length * 50 + 600));
+    timers.push(setTimeout(() => setShowStatus([true, false, false, false]), 100 + title.length * 50 + 400));
+    timers.push(setTimeout(() => setShowStatus([true, true, false, false]), 100 + title.length * 50 + 500));
+    timers.push(setTimeout(() => setShowStatus([true, true, true, false]), 100 + title.length * 50 + 600));
+    timers.push(setTimeout(() => setShowStatus([true, true, true, true]), 100 + title.length * 50 + 700));
 
     return () => {
       timers.forEach(clearTimeout);
       clearInterval(typeInterval);
     };
-  }, []);
+  }, [title]);
 
   const getGptStatus = () => {
     if (mode === 'claude-only') return { status: 'OFFLINE', color: 'text-text-muted' };
@@ -56,17 +58,25 @@ export default function EmptyState({ mode, arbiterEnabled }: EmptyStateProps) {
 
   const getClaudeStatus = () => {
     if (mode === 'gpt-only') return { status: 'OFFLINE', color: 'text-text-muted' };
+    if (isSupercharged) return { status: 'OPUS', color: 'text-amber-400' };
     return { status: 'STANDBY', color: 'text-accent-green' };
   };
 
   const getArbiterStatus = () => {
+    if (isSupercharged) return { status: 'ARMED', color: 'text-amber-400' };
     if (!arbiterEnabled) return { status: 'OFF', color: 'text-text-muted' };
     return { status: 'ARMED', color: 'text-accent-green' };
+  };
+
+  const getWebSearchStatus = () => {
+    if (!isSupercharged) return { status: 'OFF', color: 'text-text-muted' };
+    return { status: 'ACTIVE', color: 'text-amber-400' };
   };
 
   const gptStatus = getGptStatus();
   const claudeStatus = getClaudeStatus();
   const arbiterStatus = getArbiterStatus();
+  const webSearchStatus = getWebSearchStatus();
 
   return (
     <div className="h-full flex items-center justify-center relative overflow-hidden">
@@ -95,14 +105,19 @@ export default function EmptyState({ mode, arbiterEnabled }: EmptyStateProps) {
 
         {/* Subtext */}
         <div className={`transition-all duration-300 ${showSubtext ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-2'}`}>
-          <p className="text-sm text-text-muted font-mono mb-6 max-w-md mx-auto leading-relaxed">
-            Multi-model decision synthesis ready.<br />
-            Two AI models. Independent analysis. One recommendation.
+          <p className={`text-sm font-mono mb-6 max-w-md mx-auto leading-relaxed ${isSupercharged ? 'text-amber-400/70' : 'text-text-muted'}`}>
+            {isSupercharged ? (
+              <>Premium mode active. Web search + Opus models + Multi-pass synthesis.<br />
+              Deeper thinking. Better quality. More capabilities.</>
+            ) : (
+              <>Multi-model decision synthesis ready.<br />
+              Two AI models. Independent analysis. One recommendation.</>
+            )}
           </p>
         </div>
 
         {/* Status indicators */}
-        <div className="flex items-center justify-center gap-6 font-mono text-xs">
+        <div className="flex items-center justify-center gap-6 font-mono text-xs flex-wrap">
           {/* GPT Status */}
           <div className={`flex items-center gap-2 transition-all duration-200 ${showStatus[0] ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-2'}`}>
             <span className={`w-2 h-2 rounded-full ${gptStatus.color === 'text-accent-green' ? 'bg-accent-green animate-status-pulse' : 'bg-text-muted'}`} />
@@ -115,7 +130,10 @@ export default function EmptyState({ mode, arbiterEnabled }: EmptyStateProps) {
 
           {/* Claude Status */}
           <div className={`flex items-center gap-2 transition-all duration-200 ${showStatus[1] ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-2'}`}>
-            <span className={`w-2 h-2 rounded-full ${claudeStatus.color === 'text-accent-green' ? 'bg-accent-green animate-status-pulse' : 'bg-text-muted'}`} />
+            <span className={`w-2 h-2 rounded-full ${
+              claudeStatus.color === 'text-accent-green' ? 'bg-accent-green animate-status-pulse' :
+              claudeStatus.color === 'text-amber-400' ? 'bg-amber-400 animate-status-pulse' : 'bg-text-muted'
+            }`} />
             <span className="text-text-secondary">Claude</span>
             <span className={claudeStatus.color}>{claudeStatus.status}</span>
           </div>
@@ -125,10 +143,27 @@ export default function EmptyState({ mode, arbiterEnabled }: EmptyStateProps) {
 
           {/* Arbiter Status */}
           <div className={`flex items-center gap-2 transition-all duration-200 ${showStatus[2] ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-2'}`}>
-            <span className={`w-2 h-2 rounded-full ${arbiterStatus.color === 'text-accent-green' ? 'bg-accent-green animate-status-pulse' : 'bg-text-muted'}`} />
+            <span className={`w-2 h-2 rounded-full ${
+              arbiterStatus.color === 'text-accent-green' ? 'bg-accent-green animate-status-pulse' :
+              arbiterStatus.color === 'text-amber-400' ? 'bg-amber-400 animate-status-pulse' : 'bg-text-muted'
+            }`} />
             <span className="text-text-secondary">Arbiter</span>
             <span className={arbiterStatus.color}>{arbiterStatus.status}</span>
           </div>
+
+          {/* Separator - only show in supercharged */}
+          {isSupercharged && (
+            <span className={`text-border-secondary transition-all duration-200 ${showStatus[3] ? 'opacity-100' : 'opacity-0'}`}>│</span>
+          )}
+
+          {/* Web Search Status - only in supercharged */}
+          {isSupercharged && (
+            <div className={`flex items-center gap-2 transition-all duration-200 ${showStatus[3] ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-2'}`}>
+              <span className={`w-2 h-2 rounded-full ${webSearchStatus.color === 'text-amber-400' ? 'bg-amber-400 animate-status-pulse' : 'bg-text-muted'}`} />
+              <span className="text-text-secondary">Web</span>
+              <span className={webSearchStatus.color}>{webSearchStatus.status}</span>
+            </div>
+          )}
         </div>
       </div>
     </div>

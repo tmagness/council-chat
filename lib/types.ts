@@ -41,11 +41,19 @@ export interface ImageAttachment {
   media_type: 'image/jpeg' | 'image/png' | 'image/gif' | 'image/webp';
 }
 
+// Tavily search result type
+export interface TavilySearchResult {
+  title: string;
+  url: string;
+  content: string;
+  score: number;
+}
+
 // API request/response types
 export interface ChatRequest {
   thread_id: string;
   message: string;
-  mode: 'council' | 'gpt-only' | 'claude-only';
+  mode: 'council' | 'gpt-only' | 'claude-only' | 'supercharged';
   arbiter: boolean;
   images?: ImageAttachment[];
 }
@@ -57,9 +65,11 @@ export interface ChatResponse {
   claude_response: string | null;
   merge_result: MergeResult | null;
   arbiter_review: string | null;
-  mode: 'council' | 'gpt-only' | 'claude-only' | 'degraded';
+  mode: 'council' | 'gpt-only' | 'claude-only' | 'supercharged' | 'degraded';
   tokens_used: number;
   estimated_cost: string;
+  search_results?: TavilySearchResult[];
+  passes_used?: number;
 }
 
 // Provider response type
@@ -80,6 +90,8 @@ export interface UIMessage {
   arbiter_review?: string | null;
   mode?: string;
   estimated_cost?: string;
+  search_results?: TavilySearchResult[];
+  passes_used?: number;
 }
 
 // Thread history message format for API calls

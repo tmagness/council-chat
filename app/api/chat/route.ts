@@ -3,11 +3,18 @@ import { callGPT } from '@/lib/providers/openai';
 import { callClaude } from '@/lib/providers/anthropic';
 import { mergeCouncil } from '@/lib/merge/mergeCouncil';
 import { arbiterReview } from '@/lib/merge/arbiterReview';
+import { superchargedMerge } from '@/lib/merge/superchargedMerge';
+import { searchTavily, formatSearchContext } from '@/lib/providers/tavily';
 import { getThreadHistory, addMessage } from '@/lib/storage/threadsRepo';
 import { getProjectContext } from '@/lib/storage/configRepo';
-import { GPT_SYSTEM_PROMPT, CLAUDE_SYSTEM_PROMPT } from '@/lib/merge/prompts';
-import { calculateCost, formatCost } from '@/lib/utils/costs';
-import { ChatRequest, ChatResponse, MergeResult, HistoryMessage, ImageAttachment } from '@/lib/types';
+import {
+  GPT_SYSTEM_PROMPT,
+  CLAUDE_SYSTEM_PROMPT,
+  SUPERCHARGED_GPT_SYSTEM_PROMPT,
+  SUPERCHARGED_CLAUDE_SYSTEM_PROMPT,
+} from '@/lib/merge/prompts';
+import { calculateCost, calculateSuperchargedCost, formatCost } from '@/lib/utils/costs';
+import { ChatRequest, ChatResponse, MergeResult, HistoryMessage, ImageAttachment, TavilySearchResult } from '@/lib/types';
 
 export const maxDuration = 60;
 
@@ -32,9 +39,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (!['council', 'gpt-only', 'claude-only'].includes(mode)) {
+    if (!['council', 'gpt-only', 'claude-only', 'supercharged'].includes(mode)) {
       return NextResponse.json(
-        { error: 'Invalid mode. Must be council, gpt-only, or claude-only' },
+        { error: 'Invalid mode. Must be council, gpt-only, claude-only, or supercharged' },
         { status: 400 }
       );
     }
@@ -54,9 +61,11 @@ export async function POST(request: NextRequest) {
     let claudeResponse: string | null = null;
     let mergeResult: MergeResult | null = null;
     let arbiterResult: string | null = null;
+    let searchResults: TavilySearchResult[] = [];
+    let passesUsed: number | undefined = undefined;
     let totalGptTokens = 0;
     let totalClaudeTokens = 0;
-    let finalMode: 'council' | 'gpt-only' | 'claude-only' | 'degraded' = mode;
+    let finalMode: 'council' | 'gpt-only' | 'claude-only' | 'supercharged' | 'degraded' = mode;
 
     if (mode === 'council') {
       // Call GPT and Claude in parallel (blind independence)
@@ -115,6 +124,66 @@ export async function POST(request: NextRequest) {
           }
         }
       }
+    } else if (mode === 'supercharged') {
+      // Pass 1: Web search for real-time context
+      searchResults = await searchTavily(message);
+      const searchContext = formatSearchContext(searchResults);
+
+      // Build enhanced messages with search context prepended to user query
+      const enhancedMessages: HistoryMessage[] = messagesWithCurrent.map((m, idx) => {
+        if (idx === messagesWithCurrent.length - 1 && m.role === 'user') {
+          // Prepend search context to the current user message
+          return {
+            ...m,
+            content: searchContext + m.content,
+          };
+        }
+        return m;
+      });
+
+      // Pass 2: Call both providers in parallel (blind independence) with Opus for Claude
+      const [gptResult, claudeResult] = await Promise.all([
+        callGPT(SUPERCHARGED_GPT_SYSTEM_PROMPT, enhancedMessages),
+        callClaude(SUPERCHARGED_CLAUDE_SYSTEM_PROMPT, enhancedMessages, 'opus'),
+      ]);
+
+      if (gptResult) {
+        gptResponse = gptResult.response;
+        totalGptTokens += gptResult.tokens_used;
+      }
+
+      if (claudeResult) {
+        claudeResponse = claudeResult.response;
+        totalClaudeTokens += claudeResult.tokens_used;
+      }
+
+      // Handle degraded mode
+      if (!gptResponse && !claudeResponse) {
+        return NextResponse.json(
+          { error: 'Both providers failed' },
+          { status: 503 }
+        );
+      }
+
+      if (!gptResponse || !claudeResponse) {
+        finalMode = 'degraded';
+      } else {
+        // Passes 3-5: Multi-pass synthesis with Opus
+        const superchargedOutput = await superchargedMerge(
+          message,
+          gptResponse,
+          claudeResponse,
+          history,
+          searchResults
+        );
+
+        if (superchargedOutput) {
+          mergeResult = superchargedOutput.result;
+          arbiterResult = superchargedOutput.arbiter_review;
+          totalClaudeTokens += superchargedOutput.tokens_used;
+          passesUsed = superchargedOutput.passes_used;
+        }
+      }
     } else if (mode === 'gpt-only') {
       const gptResult = await callGPT(GPT_SYSTEM_PROMPT, messagesWithCurrent);
       if (!gptResult) {
@@ -137,9 +206,12 @@ export async function POST(request: NextRequest) {
       totalClaudeTokens += claudeResult.tokens_used;
     }
 
-    // Calculate cost
+    // Calculate cost (use supercharged pricing for supercharged mode)
     const totalTokens = totalGptTokens + totalClaudeTokens;
-    const estimatedCost = calculateCost(totalGptTokens, totalClaudeTokens);
+    const estimatedCost =
+      mode === 'supercharged'
+        ? calculateSuperchargedCost(totalGptTokens, totalClaudeTokens, searchResults.length > 0)
+        : calculateCost(totalGptTokens, totalClaudeTokens);
     const estimatedCostStr = formatCost(estimatedCost);
 
     // Determine content for storage (consensus or single response)
@@ -188,6 +260,8 @@ export async function POST(request: NextRequest) {
       mode: finalMode,
       tokens_used: totalTokens,
       estimated_cost: estimatedCostStr,
+      ...(searchResults.length > 0 && { search_results: searchResults }),
+      ...(passesUsed !== undefined && { passes_used: passesUsed }),
     };
 
     return NextResponse.json(response);

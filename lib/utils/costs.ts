@@ -11,15 +11,36 @@ const PRICING = {
     output: 15,
     blended: 9, // approximate average
   },
+  'claude-opus': {
+    input: 15,
+    output: 75,
+    blended: 45, // approximate average for premium model
+  },
 };
+
+// Tavily search cost estimate per query
+const TAVILY_COST_PER_SEARCH = 0.01;
 
 export function calculateCost(
   gptTokens: number,
-  claudeTokens: number
+  claudeTokens: number,
+  useOpus: boolean = false
+): number {
+  const claudeModel = useOpus ? 'claude-opus' : 'claude-sonnet';
+  const gptCost = (gptTokens / 1_000_000) * PRICING['gpt-4o'].blended;
+  const claudeCost = (claudeTokens / 1_000_000) * PRICING[claudeModel].blended;
+  return gptCost + claudeCost;
+}
+
+export function calculateSuperchargedCost(
+  gptTokens: number,
+  claudeTokens: number,
+  includeSearch: boolean = true
 ): number {
   const gptCost = (gptTokens / 1_000_000) * PRICING['gpt-4o'].blended;
-  const claudeCost = (claudeTokens / 1_000_000) * PRICING['claude-sonnet'].blended;
-  return gptCost + claudeCost;
+  const claudeCost = (claudeTokens / 1_000_000) * PRICING['claude-opus'].blended;
+  const searchCost = includeSearch ? TAVILY_COST_PER_SEARCH : 0;
+  return gptCost + claudeCost + searchCost;
 }
 
 export function formatCost(cost: number): string {

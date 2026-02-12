@@ -12,8 +12,9 @@ infrastructure systems architect working in oil & gas field operations.
 - **Language**: TypeScript
 - **Hosting**: Vercel
 - **Database**: Vercel Postgres + Prisma
-- **Models**: OpenAI GPT-4o + Anthropic Claude Sonnet
-- **Merge model**: Claude Sonnet (runs merge and arbiter passes)
+- **Models**: OpenAI GPT-4o + Anthropic Claude Sonnet (standard) / Opus (supercharged)
+- **Merge model**: Claude Sonnet (standard) / Opus (supercharged)
+- **Web Search**: Tavily API (supercharged mode only)
 - **Styling**: Tailwind CSS v4
 - **Fonts**: JetBrains Mono (data/output) + IBM Plex Sans (UI/labels)
 
@@ -38,6 +39,7 @@ council-chat/
       LoadingState.tsx
       MetaBar.tsx
       StickyNav.tsx
+      SearchResultsCard.tsx
     api/
       health/route.ts
       threads/route.ts
@@ -48,9 +50,11 @@ council-chat/
     providers/
       openai.ts
       anthropic.ts
+      tavily.ts
     merge/
       mergeCouncil.ts
       arbiterReview.ts
+      superchargedMerge.ts
       prompts.ts
     storage/
       db.ts
@@ -65,14 +69,20 @@ council-chat/
 ```
 
 ## How It Works
-1. User sends a message with mode: "council", "gpt-only", or "claude-only"
+1. User sends a message with mode: "council", "gpt-only", "claude-only", or "supercharged"
 2. In council mode:
    a. Message + thread history sent to GPT (blind)
    b. Message + thread history sent to Claude (blind)
    c. Both responses sent to merge step (Claude Sonnet LLM call)
    d. Merge returns structured JSON
    e. If arbiter enabled, fourth LLM call attacks the synthesis → returns PROCEED/REVISE/ESCALATE
-3. Thread history passes only user messages and prior consensus — never raw individual model responses (prevents cross-contamination)
+3. In supercharged mode (5-pass synthesis):
+   a. Pass 1: Tavily web search for real-time context
+   b. Pass 2: Message + search context sent to GPT-4o + Claude Opus (blind, parallel)
+   c. Pass 3: Initial merge synthesis with Claude Opus
+   d. Pass 4: Arbiter critique with Claude Opus (always on)
+   e. Pass 5: Final synthesis incorporating arbiter feedback
+4. Thread history passes only user messages and prior consensus — never raw individual model responses (prevents cross-contamination)
 
 ## Merge Output Schema
 ```json
@@ -122,8 +132,8 @@ council-chat/
 ## Current Status
 MVP is fully functional and deployed to Vercel. UI redesign complete with
 industrial dark theme, component-based architecture, and all core features
-implemented including image upload, sticky navigation, and side-by-side
-response comparison.
+implemented including image upload, sticky navigation, side-by-side
+response comparison, and supercharged mode with premium models.
 
 ## Recent Changes
 - Initial scaffold generated via Claude Code
@@ -137,10 +147,17 @@ response comparison.
 - Added sticky navigation header with quick-jump buttons
 - Fixed error handling to display errors visibly in UI
 - CLAUDE.md created as master context file
+- **Added Supercharged mode**: Premium 5-pass synthesis with Claude Opus, web search (Tavily), and always-on arbiter
 
 ## Planned Next
 - Add prompt versioning and iteration tracking
-- Implement thread persistence and history loading
 - Add export functionality for decisions
 - Evaluate against Perplexity Model Council for comparison
 - Add keyboard shortcuts for navigation
+
+## Cost Comparison
+
+| Mode | Models | Est. Cost/Query |
+|------|--------|-----------------|
+| Council | GPT-4o + Sonnet + Sonnet (merge) | ~$0.04 |
+| Supercharged | GPT-4o + Opus + Opus (merge) + Opus (arbiter) + Opus (final) + Tavily | ~$0.25-0.40 |

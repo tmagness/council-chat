@@ -2,7 +2,7 @@
 
 import { ReactNode } from 'react';
 
-type Mode = 'council' | 'gpt-only' | 'claude-only';
+type Mode = 'council' | 'gpt-only' | 'claude-only' | 'supercharged';
 
 interface HeaderProps {
   mode: Mode;
@@ -31,7 +31,7 @@ export default function Header({
         <span className="font-semibold text-text-primary tracking-tight">Council</span>
       </div>
 
-      {/* Mode Selector & Arbiter Toggle */}
+      {/* Mode Selector & Toggles */}
       <div className="flex items-center gap-6">
         {/* Segmented Control */}
         <div className="flex rounded-lg bg-bg-tertiary p-1 gap-1">
@@ -67,8 +67,34 @@ export default function Header({
           </button>
         </div>
 
-        {/* Arbiter Toggle */}
-        <label className="flex items-center gap-3 cursor-pointer">
+        {/* Supercharged Toggle */}
+        <label className="flex items-center gap-2 cursor-pointer group" title="Premium mode: Opus models, web search, multi-pass synthesis (~$0.25-0.40/query)">
+          <span className="text-amber-400">
+            <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M13 3L4 14h7v7l9-11h-7V3z" />
+            </svg>
+          </span>
+          <button
+            onClick={() => setMode(mode === 'supercharged' ? 'council' : 'supercharged')}
+            className={`relative w-11 h-6 rounded-full transition-colors ${
+              mode === 'supercharged'
+                ? 'bg-amber-500'
+                : 'bg-bg-tertiary hover:bg-bg-elevated'
+            }`}
+          >
+            <span
+              className={`absolute top-1 w-4 h-4 rounded-full bg-text-primary transition-transform ${
+                mode === 'supercharged' ? 'left-6' : 'left-1'
+              }`}
+            />
+          </button>
+          <span className={`text-xs font-medium ${mode === 'supercharged' ? 'text-amber-400' : 'text-text-muted group-hover:text-text-secondary'}`}>
+            Supercharged
+          </span>
+        </label>
+
+        {/* Arbiter Toggle - only visible in council mode (always on in supercharged) */}
+        <label className={`flex items-center gap-3 cursor-pointer ${mode === 'supercharged' ? 'hidden' : ''}`}>
           <span className={`text-sm ${mode !== 'council' ? 'text-text-muted' : 'text-text-secondary'}`}>
             Arbiter
           </span>

@@ -20,8 +20,9 @@ import MetaBar from './components/MetaBar';
 import StickyNav from './components/StickyNav';
 import ContextUpdateCard from './components/ContextUpdateCard';
 import EmptyState from './components/EmptyState';
+import SearchResultsCard from './components/SearchResultsCard';
 
-type Mode = 'council' | 'gpt-only' | 'claude-only';
+type Mode = 'council' | 'gpt-only' | 'claude-only' | 'supercharged';
 
 interface Thread {
   id: string;
@@ -231,6 +232,8 @@ export default function Home() {
           arbiter_review: data.arbiter_review,
           mode: data.mode,
           estimated_cost: data.estimated_cost,
+          search_results: data.search_results,
+          passes_used: data.passes_used,
         };
         setMessages((prev) => [...prev, assistantMessage]);
 
@@ -365,6 +368,10 @@ export default function Home() {
                       <div className="space-y-4">
                         {msg.merge_result ? (
                           <>
+                            {/* Search Results (Supercharged mode) */}
+                            {msg.search_results && msg.search_results.length > 0 && (
+                              <SearchResultsCard results={msg.search_results} />
+                            )}
                             <div ref={(el) => { sectionRefs.current.consensus = el; }}>
                               <ConsensusCard
                                 consensus={msg.merge_result.consensus}
@@ -373,6 +380,7 @@ export default function Home() {
                                 gptOverallConfidence={msg.merge_result.gpt_overall_confidence}
                                 claudeOverallConfidence={msg.merge_result.claude_overall_confidence}
                                 confidenceReasoning={msg.merge_result.confidence_reasoning}
+                                isSupercharged={msg.mode === 'supercharged'}
                               />
                             </div>
                             <div ref={(el) => { sectionRefs.current.deltas = el; }}>
@@ -404,6 +412,7 @@ export default function Home() {
                                 mode={msg.mode}
                                 sessionCost={`$${sessionCost.toFixed(2)}`}
                                 queryCount={queryCount}
+                                passesUsed={msg.passes_used}
                               />
                             )}
                             {msg.merge_result.claude_md_update && (

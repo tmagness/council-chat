@@ -39,9 +39,17 @@ function buildMessageContent(text: string, images?: ImageAttachment[]): string |
   return blocks;
 }
 
+type ClaudeModel = 'sonnet' | 'opus';
+
+const MODEL_IDS: Record<ClaudeModel, string> = {
+  sonnet: 'claude-sonnet-4-20250514',
+  opus: 'claude-opus-4-20250514',
+};
+
 export async function callClaude(
   systemPrompt: string,
-  messages: HistoryMessage[]
+  messages: HistoryMessage[],
+  model: ClaudeModel = 'sonnet'
 ): Promise<ProviderResponse | null> {
   try {
     const apiMessages: AnthropicMessage[] = messages.map((m) => ({
@@ -57,7 +65,7 @@ export async function callClaude(
         'anthropic-version': '2023-06-01',
       },
       body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
+        model: MODEL_IDS[model],
         max_tokens: 4096,
         system: systemPrompt,
         messages: apiMessages,
