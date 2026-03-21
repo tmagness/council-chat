@@ -1,7 +1,15 @@
 'use client';
 
-import { Delta } from '@/lib/types';
+import { Delta, DisagreementType } from '@/lib/types';
 import ConfidenceIndicator, { CalibrationWarning } from './ConfidenceIndicator';
+
+// Disagreement type badge styling
+const disagreementTypeStyles: Record<DisagreementType, { bg: string; text: string; label: string }> = {
+  FACTUAL: { bg: 'bg-accent-red/20', text: 'text-accent-red', label: 'Factual' },
+  HALLUCINATION: { bg: 'bg-accent-red/20', text: 'text-accent-red', label: 'Hallucination' },
+  INTERPRETIVE: { bg: 'bg-accent-amber/20', text: 'text-accent-amber', label: 'Interpretive' },
+  CONFIDENCE: { bg: 'bg-accent-blue/20', text: 'text-accent-blue', label: 'Confidence' },
+};
 
 interface DeltasCardProps {
   deltas: Delta[];
@@ -39,10 +47,19 @@ export default function DeltasCard({ deltas }: DeltasCardProps) {
             key={index}
             className="bg-bg-elevated rounded-lg p-4 border-2 border-border-primary"
           >
-            {/* Topic */}
-            <h4 className="font-semibold text-text-primary mb-4 pb-2 border-b border-border-secondary">
-              {delta.topic}
-            </h4>
+            {/* Topic & Type Badge */}
+            <div className="flex items-center justify-between mb-4 pb-2 border-b border-border-secondary">
+              <h4 className="font-semibold text-text-primary">
+                {delta.topic}
+              </h4>
+              {delta.disagreementType && (
+                <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded ${
+                  disagreementTypeStyles[delta.disagreementType]?.bg || 'bg-bg-tertiary'
+                } ${disagreementTypeStyles[delta.disagreementType]?.text || 'text-text-muted'}`}>
+                  {disagreementTypeStyles[delta.disagreementType]?.label || delta.disagreementType}
+                </span>
+              )}
+            </div>
 
             {/* Delta-specific calibration warning */}
             {delta.calibration_warning && (
