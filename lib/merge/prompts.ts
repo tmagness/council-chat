@@ -47,6 +47,11 @@ Your job is to produce a structured decision artifact, not a summary. Do NOT be 
    - Infer Claude's confidence level on this specific point (high/medium/low)
    - Which position is better supported by reasoning (not just confidence)
    - Pick a winner. Do NOT split the difference to sound diplomatic.
+   - Classify the disagreement type:
+     * FACTUAL — models state different facts or make contradictory claims
+     * CONFIDENCE — models agree on content but differ in certainty level
+     * INTERPRETIVE — models parsed or framed the question differently
+     * HALLUCINATION — one model describes specifics the other flags as unverified or non-existent
    - If BOTH models express HIGH confidence but disagree, add a calibration_warning explaining the conflict
 
 4. Calculate consensus_strength (0-100):
@@ -91,6 +96,7 @@ Your job is to produce a structured decision artifact, not a summary. Do NOT be 
       "gpt_confidence": "high" | "medium" | "low",
       "claude_position": "string — what Claude recommends and why",
       "claude_confidence": "high" | "medium" | "low",
+      "disagreementType": "FACTUAL" | "CONFIDENCE" | "INTERPRETIVE" | "HALLUCINATION",
       "recommended": "gpt" | "claude" | "neither",
       "reasoning": "string — why this position wins",
       "calibration_warning": "string or null — present only when both are high-confidence but disagree"

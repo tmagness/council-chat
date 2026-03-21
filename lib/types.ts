@@ -1,6 +1,9 @@
 // Confidence level type
 export type ConfidenceLevel = 'high' | 'medium' | 'low';
 
+// Disagreement type classification
+export type DisagreementType = 'FACTUAL' | 'CONFIDENCE' | 'INTERPRETIVE' | 'HALLUCINATION';
+
 // Delta represents a point of disagreement between models
 export interface Delta {
   topic: string;
@@ -8,6 +11,7 @@ export interface Delta {
   gpt_confidence: ConfidenceLevel;
   claude_position: string;
   claude_confidence: ConfidenceLevel;
+  disagreementType: DisagreementType;
   recommended: 'gpt' | 'claude' | 'neither';
   reasoning: string;
   calibration_warning?: string;
