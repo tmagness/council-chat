@@ -8,7 +8,7 @@ prompt. It is NOT a chatbot. It is a decision engine for an
 infrastructure systems architect working in oil & gas field operations.
 
 ## Tech Stack
-- **Framework**: Next.js 14+ (App Router)
+- **Framework**: Next.js 14.2.35 (App Router)
 - **Language**: TypeScript
 - **Hosting**: Vercel
 - **Database**: Vercel Postgres + Prisma
@@ -93,9 +93,13 @@ council-chat/
     {
       "topic": "point of disagreement",
       "gpt_position": "what GPT recommends and why",
+      "gpt_confidence": "high | medium | low",
       "claude_position": "what Claude recommends and why",
+      "claude_confidence": "high | medium | low",
+      "disagreementType": "FACTUAL | CONFIDENCE | INTERPRETIVE | HALLUCINATION",
       "recommended": "gpt | claude | neither",
-      "reasoning": "why this position wins"
+      "reasoning": "why this position wins",
+      "calibration_warning": "string or null"
     }
   ],
   "unverified_assumptions": ["assumptions made without evidence"],
@@ -104,6 +108,12 @@ council-chat/
 }
 ```
 
+### Disagreement Type Classifications
+- **FACTUAL**: Models state different facts or make contradictory claims
+- **CONFIDENCE**: Models agree on content but differ in certainty level
+- **INTERPRETIVE**: Models parsed or framed the question differently
+- **HALLUCINATION**: One model describes specifics the other flags as unverified or non-existent
+
 ## API Endpoints
 - GET  /api/health → { ok: true }
 - POST /api/threads → { thread_id }
@@ -111,8 +121,10 @@ council-chat/
 - POST /api/chat → { thread_id, message, mode, arbiter?, images? }
 
 ## UI Features
-- Desktop-first, dark theme, industrial-utilitarian
-- Two-panel: thread sidebar (left) + main response area (right)
+- Responsive design (mobile-first with desktop enhancements)
+- Dark theme, industrial-utilitarian aesthetic
+- Two-panel: collapsible thread sidebar (left) + main response area (right)
+- Mobile: hamburger menu, touch-friendly controls, iOS Safari viewport fixes
 - Consensus most prominent, raw responses collapsed
 - Confidence badges, delta cards, arbiter verdict badges
 - Side-by-side comparison view for raw responses
@@ -148,6 +160,9 @@ response comparison, and supercharged mode with premium models.
 - Fixed error handling to display errors visibly in UI
 - CLAUDE.md created as master context file
 - **Added Supercharged mode**: Premium 5-pass synthesis with Claude Opus, web search (Tavily), and always-on arbiter
+- Added `disagreementType` classification to deltas (FACTUAL, CONFIDENCE, INTERPRETIVE, HALLUCINATION)
+- Mobile responsiveness refactor: hamburger menu, responsive layouts, iOS Safari fixes
+- Upgraded Next.js to 14.2.35 (security patch)
 
 ## Planned Next
 - Add prompt versioning and iteration tracking
