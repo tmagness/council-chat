@@ -15,6 +15,8 @@ interface SidebarProps {
   onNewThread: () => void;
   onDeleteThread: (threadId: string) => void;
   onDeleteAllThreads: () => void;
+  isOpen?: boolean;
+  onClose?: () => void;
 }
 
 export default function Sidebar({
@@ -24,25 +26,72 @@ export default function Sidebar({
   onNewThread,
   onDeleteThread,
   onDeleteAllThreads,
+  isOpen = true,
+  onClose,
 }: SidebarProps) {
   const [showClearConfirm, setShowClearConfirm] = useState(false);
 
+  const handleSelectThread = (threadId: string) => {
+    onSelectThread(threadId);
+    // Close sidebar on mobile after selection
+    if (onClose && window.innerWidth < 768) {
+      onClose();
+    }
+  };
+
+  const handleNewThread = () => {
+    onNewThread();
+    // Close sidebar on mobile after creating new thread
+    if (onClose && window.innerWidth < 768) {
+      onClose();
+    }
+  };
+
   return (
-    <aside className="w-64 border-r border-border-primary bg-bg-secondary flex flex-col">
+    <>
+      {/* Mobile overlay backdrop */}
+      {isOpen && (
+        <div
+          className="fixed inset-0 bg-black/50 z-40 md:hidden"
+          onClick={onClose}
+        />
+      )}
+
+      <aside className={`
+        fixed md:relative inset-y-0 left-0 z-50
+        w-64 border-r border-border-primary bg-bg-secondary flex flex-col
+        transform transition-transform duration-200 ease-in-out
+        ${isOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
+        md:transform-none
+      `}>
       {/* Header */}
       <div className="p-4 border-b border-border-primary flex items-center justify-between">
         <h2 className="text-xs font-semibold text-text-secondary uppercase tracking-wider">
           Threads
         </h2>
-        {threads.length > 0 && (
-          <button
-            onClick={() => setShowClearConfirm(true)}
-            className="text-xs text-text-muted hover:text-accent-red transition-colors"
-            title="Clear all threads"
-          >
-            Clear all
-          </button>
-        )}
+        <div className="flex items-center gap-2">
+          {threads.length > 0 && (
+            <button
+              onClick={() => setShowClearConfirm(true)}
+              className="text-xs text-text-muted hover:text-accent-red transition-colors"
+              title="Clear all threads"
+            >
+              Clear all
+            </button>
+          )}
+          {/* Close button for mobile */}
+          {onClose && (
+            <button
+              onClick={onClose}
+              className="md:hidden p-1 text-text-muted hover:text-text-primary transition-colors"
+              title="Close sidebar"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Clear confirmation */}
@@ -78,7 +127,7 @@ export default function Sidebar({
             {threads.map((thread) => (
               <li key={thread.id} className="group relative">
                 <button
-                  onClick={() => onSelectThread(thread.id)}
+                  onClick={() => handleSelectThread(thread.id)}
                   className={`w-full text-left px-3 py-2.5 rounded-lg text-sm transition-colors pr-8 ${
                     activeThreadId === thread.id
                       ? 'bg-bg-tertiary text-text-primary'
@@ -124,7 +173,7 @@ export default function Sidebar({
       {/* New Thread Button */}
       <div className="p-3 border-t border-border-primary">
         <button
-          onClick={onNewThread}
+          onClick={handleNewThread}
           className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-bg-tertiary hover:bg-bg-elevated text-text-secondary hover:text-text-primary transition-colors text-sm font-medium"
         >
           <svg
@@ -144,5 +193,6 @@ export default function Sidebar({
         </button>
       </div>
     </aside>
+    </>
   );
 }

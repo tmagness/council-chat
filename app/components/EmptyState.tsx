@@ -98,9 +98,9 @@ export default function EmptyState({ mode, arbiterEnabled }: EmptyStateProps) {
         </div>
 
         {/* Title with typewriter effect */}
-        <h2 className="text-2xl font-bold text-text-primary tracking-[0.3em] mb-3 h-8">
+        <h2 className="text-lg sm:text-2xl font-bold text-text-primary tracking-[0.2em] sm:tracking-[0.3em] mb-3 h-6 sm:h-8">
           {typedText}
-          <span className={`inline-block w-0.5 h-6 bg-accent-blue ml-1 ${typedText.length === title.length ? 'animate-cursor-blink' : ''}`} />
+          <span className={`inline-block w-0.5 h-5 sm:h-6 bg-accent-blue ml-1 ${typedText.length === title.length ? 'animate-cursor-blink' : ''}`} />
         </h2>
 
         {/* Subtext */}
@@ -117,7 +117,7 @@ export default function EmptyState({ mode, arbiterEnabled }: EmptyStateProps) {
         </div>
 
         {/* Status indicators */}
-        <div className="flex items-center justify-center gap-6 font-mono text-xs flex-wrap">
+        <div className="flex items-center justify-center gap-3 sm:gap-6 font-mono text-xs flex-wrap px-4">
           {/* GPT Status */}
           <div className={`flex items-center gap-2 transition-all duration-200 ${showStatus[0] ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-2'}`}>
             <span className={`w-2 h-2 rounded-full ${gptStatus.color === 'text-accent-green' ? 'bg-accent-green animate-status-pulse' : 'bg-text-muted'}`} />

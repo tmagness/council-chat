@@ -1,5 +1,17 @@
 @import "tailwindcss";
 
+/* Mobile viewport height fix for iOS Safari */
+@supports (height: 100dvh) {
+  :root {
+    --vh: 1dvh;
+  }
+}
+
+/* Safe area insets for notched devices */
+html {
+  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+}
+
 /* Custom theme colors - WCAG AA compliant contrast ratios */
 @theme {
   --color-bg-primary: #0a0a0f;

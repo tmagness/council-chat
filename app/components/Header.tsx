@@ -10,6 +10,7 @@ interface HeaderProps {
   arbiterEnabled: boolean;
   setArbiterEnabled: (enabled: boolean) => void;
   onOpenSettings?: () => void;
+  onToggleSidebar?: () => void;
   children?: ReactNode;
 }
 
@@ -19,35 +20,49 @@ export default function Header({
   arbiterEnabled,
   setArbiterEnabled,
   onOpenSettings,
+  onToggleSidebar,
   children,
 }: HeaderProps) {
   return (
-    <header className="h-14 border-b border-border-primary bg-bg-secondary flex items-center justify-between px-6">
-      {/* Logo */}
-      <div className="flex items-center gap-3">
+    <header className="h-14 border-b border-border-primary bg-bg-secondary flex items-center justify-between px-3 sm:px-6">
+      {/* Logo and Menu Toggle */}
+      <div className="flex items-center gap-2 sm:gap-3">
+        {/* Mobile menu toggle */}
+        {onToggleSidebar && (
+          <button
+            onClick={onToggleSidebar}
+            className="md:hidden p-2 text-text-secondary hover:text-text-primary hover:bg-bg-tertiary rounded-lg transition-colors"
+            title="Toggle sidebar"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+            </svg>
+          </button>
+        )}
         <div className="w-8 h-8 rounded bg-accent-blue/20 flex items-center justify-center">
           <span className="text-accent-blue font-mono font-semibold text-sm">AI</span>
         </div>
-        <span className="font-semibold text-text-primary tracking-tight">Council</span>
+        <span className="font-semibold text-text-primary tracking-tight hidden sm:block">Council</span>
       </div>
 
       {/* Mode Selector & Toggles */}
-      <div className="flex items-center gap-6">
+      <div className="flex items-center gap-2 sm:gap-4 lg:gap-6">
         {/* Segmented Control */}
-        <div className="flex rounded-lg bg-bg-tertiary p-1 gap-1">
+        <div className="flex rounded-lg bg-bg-tertiary p-0.5 sm:p-1 gap-0.5 sm:gap-1">
           <button
             onClick={() => setMode('council')}
-            className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${
+            className={`px-2 sm:px-4 py-1 sm:py-1.5 rounded-md text-xs sm:text-sm font-medium transition-all ${
               mode === 'council'
                 ? 'bg-accent-blue text-bg-primary'
                 : 'text-text-secondary hover:text-text-primary'
             }`}
           >
-            Council
+            <span className="hidden sm:inline">Council</span>
+            <span className="sm:hidden">All</span>
           </button>
           <button
             onClick={() => setMode('gpt-only')}
-            className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${
+            className={`px-2 sm:px-4 py-1 sm:py-1.5 rounded-md text-xs sm:text-sm font-medium transition-all ${
               mode === 'gpt-only'
                 ? 'bg-bg-elevated text-text-primary'
                 : 'text-text-secondary hover:text-text-primary'
@@ -57,18 +72,19 @@ export default function Header({
           </button>
           <button
             onClick={() => setMode('claude-only')}
-            className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${
+            className={`px-2 sm:px-4 py-1 sm:py-1.5 rounded-md text-xs sm:text-sm font-medium transition-all ${
               mode === 'claude-only'
                 ? 'bg-bg-elevated text-text-primary'
                 : 'text-text-secondary hover:text-text-primary'
             }`}
           >
-            Claude
+            <span className="hidden sm:inline">Claude</span>
+            <span className="sm:hidden">C</span>
           </button>
         </div>
 
         {/* Supercharged Toggle */}
-        <label className="flex items-center gap-2 cursor-pointer group" title="Premium mode: Opus models, web search, multi-pass synthesis (~$0.25-0.40/query)">
+        <label className="flex items-center gap-1 sm:gap-2 cursor-pointer group" title="Premium mode: Opus models, web search, multi-pass synthesis (~$0.25-0.40/query)">
           <span className="text-amber-400">
             <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
               <path d="M13 3L4 14h7v7l9-11h-7V3z" />
@@ -76,32 +92,32 @@ export default function Header({
           </span>
           <button
             onClick={() => setMode(mode === 'supercharged' ? 'council' : 'supercharged')}
-            className={`relative w-11 h-6 rounded-full transition-colors ${
+            className={`relative w-9 sm:w-11 h-5 sm:h-6 rounded-full transition-colors ${
               mode === 'supercharged'
                 ? 'bg-amber-500'
                 : 'bg-bg-tertiary hover:bg-bg-elevated'
             }`}
           >
             <span
-              className={`absolute top-1 w-4 h-4 rounded-full bg-text-primary transition-transform ${
-                mode === 'supercharged' ? 'left-6' : 'left-1'
+              className={`absolute top-0.5 sm:top-1 w-4 h-4 rounded-full bg-text-primary transition-transform ${
+                mode === 'supercharged' ? 'left-4 sm:left-6' : 'left-0.5 sm:left-1'
               }`}
             />
           </button>
-          <span className={`text-xs font-medium ${mode === 'supercharged' ? 'text-amber-400' : 'text-text-muted group-hover:text-text-secondary'}`}>
+          <span className={`hidden lg:block text-xs font-medium ${mode === 'supercharged' ? 'text-amber-400' : 'text-text-muted group-hover:text-text-secondary'}`}>
             Supercharged
           </span>
         </label>
 
-        {/* Arbiter Toggle - only visible in council mode (always on in supercharged) */}
-        <label className={`flex items-center gap-3 cursor-pointer ${mode === 'supercharged' ? 'hidden' : ''}`}>
-          <span className={`text-sm ${mode !== 'council' ? 'text-text-muted' : 'text-text-secondary'}`}>
+        {/* Arbiter Toggle - only visible in council mode (always on in supercharged), hidden on small mobile */}
+        <label className={`hidden sm:flex items-center gap-2 sm:gap-3 cursor-pointer ${mode === 'supercharged' ? 'sm:hidden' : ''}`}>
+          <span className={`text-xs sm:text-sm ${mode !== 'council' ? 'text-text-muted' : 'text-text-secondary'}`}>
             Arbiter
           </span>
           <button
             onClick={() => mode === 'council' && setArbiterEnabled(!arbiterEnabled)}
             disabled={mode !== 'council'}
-            className={`relative w-11 h-6 rounded-full transition-colors ${
+            className={`relative w-9 sm:w-11 h-5 sm:h-6 rounded-full transition-colors ${
               mode !== 'council'
                 ? 'bg-bg-tertiary cursor-not-allowed'
                 : arbiterEnabled
@@ -110,8 +126,8 @@ export default function Header({
             }`}
           >
             <span
-              className={`absolute top-1 w-4 h-4 rounded-full bg-text-primary transition-transform ${
-                arbiterEnabled ? 'left-6' : 'left-1'
+              className={`absolute top-0.5 sm:top-1 w-4 h-4 rounded-full bg-text-primary transition-transform ${
+                arbiterEnabled ? 'left-4 sm:left-6' : 'left-0.5 sm:left-1'
               }`}
             />
           </button>

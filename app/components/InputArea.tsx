@@ -189,7 +189,7 @@ export default function InputArea({ onSubmit, disabled, loading }: InputAreaProp
   return (
     <div
       ref={dropZoneRef}
-      className="border-t border-border-primary bg-bg-secondary p-4 relative"
+      className="border-t border-border-primary bg-bg-secondary p-2 sm:p-4 relative"
       onDragEnter={handleDragEnter}
       onDragLeave={handleDragLeave}
       onDragOver={handleDragOver}
@@ -272,12 +272,12 @@ export default function InputArea({ onSubmit, disabled, loading }: InputAreaProp
         </div>
       )}
 
-      <div className="flex items-end gap-3">
+      <div className="flex items-end gap-2 sm:gap-3">
         {/* Image Upload Button */}
         <button
           onClick={() => fileInputRef.current?.click()}
           disabled={disabled || loading}
-          className="flex-shrink-0 w-10 h-10 rounded-lg bg-bg-tertiary border-2 border-border-primary text-text-secondary flex items-center justify-center hover:bg-bg-elevated hover:text-accent-blue hover:border-accent-blue/50 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+          className="flex-shrink-0 w-9 h-9 sm:w-10 sm:h-10 rounded-lg bg-bg-tertiary border-2 border-border-primary text-text-secondary flex items-center justify-center hover:bg-bg-elevated hover:text-accent-blue hover:border-accent-blue/50 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
           title="Attach image (or drag & drop, or paste)"
         >
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -306,18 +306,18 @@ export default function InputArea({ onSubmit, disabled, loading }: InputAreaProp
             onKeyDown={handleKeyDown}
             placeholder={
               images.length > 0
-                ? "Add a message about the image(s)..."
-                : "Ask the council a question... (drag & drop or paste images)"
+                ? "Add a message..."
+                : "Ask a question..."
             }
             disabled={disabled || loading}
             rows={1}
-            className="w-full bg-bg-tertiary border-2 border-border-primary rounded-lg px-4 py-3 text-sm text-text-primary placeholder-text-muted resize-none focus:outline-none focus:border-accent-blue focus:ring-1 focus:ring-accent-blue disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            className="w-full bg-bg-tertiary border-2 border-border-primary rounded-lg px-3 sm:px-4 py-2 sm:py-3 text-sm text-text-primary placeholder-text-muted resize-none focus:outline-none focus:border-accent-blue focus:ring-1 focus:ring-accent-blue disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           />
         </div>
         <button
           onClick={handleSubmit}
           disabled={(!value.trim() && images.length === 0) || disabled || loading}
-          className="flex-shrink-0 w-10 h-10 rounded-lg bg-accent-blue text-bg-primary flex items-center justify-center hover:bg-accent-blue/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          className="flex-shrink-0 w-9 h-9 sm:w-10 sm:h-10 rounded-lg bg-accent-blue text-bg-primary flex items-center justify-center hover:bg-accent-blue/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
         >
           {loading ? (
             <svg
@@ -357,8 +357,8 @@ export default function InputArea({ onSubmit, disabled, loading }: InputAreaProp
         </button>
       </div>
 
-      {/* Help text */}
-      <div className="mt-2 text-xs text-text-muted text-center">
+      {/* Help text - hidden on mobile to save space */}
+      <div className="hidden sm:block mt-2 text-xs text-text-muted text-center">
         Tip: Drag & drop images, paste from clipboard, or click the image icon
       </div>
     </div>
