@@ -163,6 +163,7 @@ response comparison, and supercharged mode with premium models.
 - Added `disagreementType` classification to deltas (FACTUAL, CONFIDENCE, INTERPRETIVE, HALLUCINATION)
 - Mobile responsiveness refactor: hamburger menu, responsive layouts, iOS Safari fixes
 - Upgraded Next.js to 14.2.35 (security patch)
+- Added disagreementType badges to delta cards UI (color-coded: red for FACTUAL/HALLUCINATION, amber for INTERPRETIVE, blue for CONFIDENCE)
 
 ## Planned Next
 - Add prompt versioning and iteration tracking
