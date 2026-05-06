@@ -64,6 +64,11 @@ export async function callGPT(
       },
       // GPT-5 reasoning models lock down sampling parameters that gpt-4o accepts:
       // - 'max_tokens' is rejected; use 'max_completion_tokens' instead
+      // - 'max_completion_tokens' covers BOTH hidden reasoning tokens AND visible output;
+      //   16384 (~4x prior 4096) gives headroom for heavy multi-document synthesis where
+      //   even 'low' reasoning consumed most of 4096 before any visible content emerged
+      //   (observed empty-response failure on 8-transcript Council workload). gpt-5.4
+      //   supports up to 128k output tokens.
       // - 'temperature' only accepts the default value (1); omit to let API default apply
       // - 'reasoning_effort'='low' caps reasoning latency (gpt-5.4 defaults to 'medium')
       // gpt-4o keeps the legacy contract: max_tokens + temperature: 0.7, no reasoning_effort.
@@ -74,7 +79,7 @@ export async function callGPT(
         messages: apiMessages,
         ...(model === 'gpt-4o'
           ? { max_tokens: 4096, temperature: 0.7 }
-          : { max_completion_tokens: 4096, reasoning_effort: 'low' }),
+          : { max_completion_tokens: 16384, reasoning_effort: 'low' }),
       }),
     });
 
