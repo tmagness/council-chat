@@ -1,10 +1,10 @@
 # AI Council
 
-A "two-model council" web app that sends user messages to GPT-4o and Claude independently, then merges their responses into a structured decision artifact.
+A "two-model council" web app that sends user messages to GPT-5.4 and Claude independently, then merges their responses into a structured decision artifact.
 
 ## Features
 
-- **Council Mode**: Query both GPT-4o and Claude simultaneously, then merge responses into a consensus
+- **Council Mode**: Query both GPT-5.4 and Claude simultaneously, then merge responses into a consensus
 - **Blind Independence**: Models don't see each other's responses; only prior consensus is shared
 - **Disagreement Tracking**: Identifies and documents points where models disagree
 - **Arbiter Review**: Optional third-party review of the merged consensus

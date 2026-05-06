@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 
 const DELIBERATION_PHASES = [
   'Querying models...',
-  'GPT-4o analyzing...',
+  'GPT-5.4 analyzing...',
   'Claude analyzing...',
   'Cross-referencing positions...',
   'Identifying consensus...',
@@ -146,7 +146,7 @@ export default function LoadingState() {
           {/* GPT Status */}
           <div className={`flex items-center gap-2 transition-all duration-300 ${gptActive ? 'opacity-100' : 'opacity-40'}`}>
             <span className={`w-2 h-2 rounded-full ${gptActive ? 'bg-accent-green animate-pulse' : 'bg-text-muted'}`} />
-            <span className="text-text-secondary">GPT-4o</span>
+            <span className="text-text-secondary">GPT-5.4</span>
             <span className={gptActive ? 'text-accent-green' : 'text-text-muted'}>
               {gptActive ? 'ACTIVE' : 'WAIT'}
             </span>

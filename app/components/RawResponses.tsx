@@ -68,7 +68,7 @@ export default function RawResponses({
             <div className="flex items-center gap-2 mb-3">
               <div className="w-2 h-2 rounded-full bg-accent-green"></div>
               <span className="text-xs font-semibold text-text-secondary uppercase tracking-wider">
-                GPT-4o
+                GPT-5.4
               </span>
             </div>
             <div className="overflow-y-auto max-h-[400px]">
@@ -103,7 +103,7 @@ export default function RawResponses({
               <div className="flex items-center gap-2 mb-3">
                 <div className="w-2 h-2 rounded-full bg-accent-green"></div>
                 <span className="text-xs font-semibold text-text-secondary uppercase tracking-wider">
-                  GPT-4o Response
+                  GPT-5.4 Response
                 </span>
               </div>
               <div className="overflow-y-auto max-h-[300px]">
@@ -118,7 +118,7 @@ export default function RawResponses({
               <div className="flex items-center gap-2 mb-3">
                 <div className="w-2 h-2 rounded-full bg-accent-amber"></div>
                 <span className="text-xs font-semibold text-text-secondary uppercase tracking-wider">
-                  Claude Response
+                  Claude Sonnet 4.6 Response
                 </span>
               </div>
               <div className="overflow-y-auto max-h-[300px]">
@@ -161,7 +161,7 @@ function CollapsedView({
             <div className="flex items-center gap-2">
               <div className="w-2 h-2 rounded-full bg-accent-green"></div>
               <span className="text-sm font-medium text-text-secondary">
-                GPT-4o Response
+                GPT-5.4 Response
               </span>
             </div>
             <svg
@@ -194,7 +194,7 @@ function CollapsedView({
         </div>
       )}
 
-      {/* Claude Response */}
+      {/* Claude Sonnet 4.6 Response */}
       {claudeResponse && (
         <div>
           <button
@@ -204,7 +204,7 @@ function CollapsedView({
             <div className="flex items-center gap-2">
               <div className="w-2 h-2 rounded-full bg-accent-amber"></div>
               <span className="text-sm font-medium text-text-secondary">
-                Claude Response
+                Claude Sonnet 4.6 Response
               </span>
             </div>
             <svg
