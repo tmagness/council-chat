@@ -62,11 +62,16 @@ export async function callGPT(
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
       },
+      // GPT-5 reasoning models reject 'max_tokens' and require 'max_completion_tokens'.
+      // gpt-4o still uses the legacy 'max_tokens' parameter.
+      // Source: https://developers.openai.com/api/reference/resources/chat/subresources/completions/methods/create
       body: JSON.stringify({
         model: MODEL_IDS[model],
         messages: apiMessages,
         temperature: 0.7,
-        max_tokens: 4096,
+        ...(model === 'gpt-4o'
+          ? { max_tokens: 4096 }
+          : { max_completion_tokens: 4096 }),
       }),
     });
 
