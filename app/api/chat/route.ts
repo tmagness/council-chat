@@ -118,9 +118,11 @@ export async function POST(request: NextRequest) {
         finalMode = 'degraded';
         // Skip merge in degraded mode
       } else {
-        // Merge responses
+        // Merge responses. Pass augmentedUserContent (with [ATTACHMENT...] blocks)
+        // so the synthesis layer sees what the providers saw — otherwise it cannot
+        // validate quotes from attached documents and falsely flags them as hallucinations.
         const mergeOutput = await mergeCouncil(
-          message,
+          augmentedUserContent,
           gptResponse,
           claudeResponse,
           history
@@ -191,9 +193,12 @@ export async function POST(request: NextRequest) {
       if (!gptResponse || !claudeResponse) {
         finalMode = 'degraded';
       } else {
-        // Passes 3-5: Multi-pass synthesis with Opus
+        // Passes 3-5: Multi-pass synthesis with Opus.
+        // Pass augmentedUserContent (with [ATTACHMENT...] blocks) so the synthesis
+        // layer sees the document content the providers saw. searchResults still
+        // travels separately for the Tavily-aware merge prompt.
         const superchargedOutput = await superchargedMerge(
-          message,
+          augmentedUserContent,
           gptResponse,
           claudeResponse,
           history,
