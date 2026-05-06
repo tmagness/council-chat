@@ -16,7 +16,7 @@ import {
 import { calculateCost, calculateSuperchargedCost, formatCost } from '@/lib/utils/costs';
 import { ChatRequest, ChatResponse, MergeResult, HistoryMessage, ImageAttachment, DocumentAttachment, TavilySearchResult } from '@/lib/types';
 
-export const maxDuration = 60;
+export const maxDuration = 300;
 
 function buildAugmentedUserContent(message: string, documents?: DocumentAttachment[]): string {
   if (!documents || documents.length === 0) return message;

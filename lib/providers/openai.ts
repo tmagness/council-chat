@@ -64,6 +64,9 @@ export async function callGPT(
       },
       // GPT-5 reasoning models reject 'max_tokens' and require 'max_completion_tokens'.
       // gpt-4o still uses the legacy 'max_tokens' parameter.
+      // reasoning_effort='low' caps reasoning latency on gpt-5.x (defaults to 'medium' on gpt-5.4).
+      // Council is the cost-conscious tier — Supercharged uses Opus + gpt-4o for deep reasoning.
+      // gpt-4o does not support reasoning_effort.
       // Source: https://developers.openai.com/api/reference/resources/chat/subresources/completions/methods/create
       body: JSON.stringify({
         model: MODEL_IDS[model],
@@ -71,7 +74,7 @@ export async function callGPT(
         temperature: 0.7,
         ...(model === 'gpt-4o'
           ? { max_tokens: 4096 }
-          : { max_completion_tokens: 4096 }),
+          : { max_completion_tokens: 4096, reasoning_effort: 'low' }),
       }),
     });
 
