@@ -1,20 +1,60 @@
 'use client';
 
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { ImageAttachment } from '@/lib/types';
+import { ImageAttachment, DocumentAttachment, ClientDocument } from '@/lib/types';
 
 interface InputAreaProps {
   onSubmit: (message: string, images: ImageAttachment[]) => void;
   disabled: boolean;
   loading: boolean;
+  documents: ClientDocument[];
+  onAddDocuments: (docs: DocumentAttachment[]) => void;
+  onRemoveDocument: (id: string) => void;
 }
 
-export default function InputArea({ onSubmit, disabled, loading }: InputAreaProps) {
+const PER_FILE_LIMIT = 10 * 1024 * 1024; // 10MB
+const TOTAL_LIMIT = 25 * 1024 * 1024; // 25MB
+
+const ACCEPTED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+const ACCEPT_ATTR = [
+  ...ACCEPTED_IMAGE_TYPES,
+  '.docx',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  '.pdf',
+  'application/pdf',
+  '.txt',
+  'text/plain',
+].join(',');
+
+function formatBytes(bytes: number): string {
+  if (bytes < 1024) return `${bytes}B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)}KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)}MB`;
+}
+
+function classifyFile(file: File): 'image' | 'docx' | 'pdf' | 'txt' | null {
+  if (ACCEPTED_IMAGE_TYPES.includes(file.type)) return 'image';
+  const name = file.name.toLowerCase();
+  if (file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' || name.endsWith('.docx')) return 'docx';
+  if (file.type === 'application/pdf' || name.endsWith('.pdf')) return 'pdf';
+  if (file.type === 'text/plain' || name.endsWith('.txt')) return 'txt';
+  return null;
+}
+
+export default function InputArea({
+  onSubmit,
+  disabled,
+  loading,
+  documents,
+  onAddDocuments,
+  onRemoveDocument,
+}: InputAreaProps) {
   const [value, setValue] = useState('');
   const [images, setImages] = useState<ImageAttachment[]>([]);
   const [imagePreviews, setImagePreviews] = useState<string[]>([]);
   const [isDragging, setIsDragging] = useState(false);
   const [uploadProgress, setUploadProgress] = useState<string | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const dropZoneRef = useRef<HTMLDivElement>(null);
@@ -28,12 +68,16 @@ export default function InputArea({ onSubmit, disabled, loading }: InputAreaProp
     }
   }, [value]);
 
+  const hasAttachments = images.length > 0 || documents.length > 0;
+
   const handleSubmit = () => {
-    if ((!value.trim() && images.length === 0) || disabled || loading) return;
+    if ((!value.trim() && !hasAttachments) || disabled || loading) return;
     onSubmit(value.trim(), images);
     setValue('');
     setImages([]);
     setImagePreviews([]);
+    setErrorMessage(null);
+    // documents are managed by the parent and persist across turns
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -42,54 +86,6 @@ export default function InputArea({ onSubmit, disabled, loading }: InputAreaProp
       handleSubmit();
     }
   };
-
-  const processFiles = useCallback(async (files: FileList | File[]) => {
-    const fileArray = Array.from(files);
-    const imageFiles = fileArray.filter(f => f.type.startsWith('image/'));
-
-    if (imageFiles.length === 0) {
-      setUploadProgress('No valid images found');
-      setTimeout(() => setUploadProgress(null), 2000);
-      return;
-    }
-
-    setUploadProgress(`Processing ${imageFiles.length} image${imageFiles.length > 1 ? 's' : ''}...`);
-
-    let processed = 0;
-    const errors: string[] = [];
-
-    for (const file of imageFiles) {
-      if (file.size > 10 * 1024 * 1024) {
-        errors.push(`${file.name}: exceeds 10MB limit`);
-        continue;
-      }
-
-      if (!['image/jpeg', 'image/png', 'image/gif', 'image/webp'].includes(file.type)) {
-        errors.push(`${file.name}: unsupported format`);
-        continue;
-      }
-
-      try {
-        const base64 = await readFileAsBase64(file);
-        const mediaType = file.type as ImageAttachment['media_type'];
-
-        setImages((prev) => [...prev, { data: base64, media_type: mediaType }]);
-        setImagePreviews((prev) => [...prev, `data:${file.type};base64,${base64}`]);
-        processed++;
-        setUploadProgress(`Processed ${processed}/${imageFiles.length}...`);
-      } catch (err) {
-        errors.push(`${file.name}: failed to process`);
-      }
-    }
-
-    if (errors.length > 0) {
-      setUploadProgress(`Added ${processed} image${processed !== 1 ? 's' : ''}. ${errors.length} failed.`);
-    } else {
-      setUploadProgress(`Added ${processed} image${processed !== 1 ? 's' : ''}`);
-    }
-
-    setTimeout(() => setUploadProgress(null), 3000);
-  }, []);
 
   const readFileAsBase64 = (file: File): Promise<string> => {
     return new Promise((resolve, reject) => {
@@ -104,12 +100,122 @@ export default function InputArea({ onSubmit, disabled, loading }: InputAreaProp
     });
   };
 
+  const readFileAsText = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve((reader.result as string) ?? '');
+      reader.onerror = () => reject(new Error('Failed to read text'));
+      reader.readAsText(file);
+    });
+  };
+
+  const extractDocxText = async (file: File): Promise<string> => {
+    const mammoth = await import('mammoth');
+    const buffer = await file.arrayBuffer();
+    const result = await mammoth.extractRawText({ arrayBuffer: buffer });
+    return result.value || '';
+  };
+
+  const extractPdfText = async (file: File): Promise<string> => {
+    const pdfjs: typeof import('pdfjs-dist') = await import('pdfjs-dist');
+    if (!pdfjs.GlobalWorkerOptions.workerPort) {
+      pdfjs.GlobalWorkerOptions.workerPort = new Worker(
+        new URL('pdfjs-dist/build/pdf.worker.min.mjs', import.meta.url),
+        { type: 'module' }
+      );
+    }
+    const buffer = await file.arrayBuffer();
+    const pdf = await pdfjs.getDocument({ data: buffer }).promise;
+    let text = '';
+    for (let i = 1; i <= pdf.numPages; i++) {
+      const page = await pdf.getPage(i);
+      const content = await page.getTextContent();
+      const pageText = content.items
+        .map((item) => ('str' in item ? item.str : ''))
+        .join(' ');
+      text += pageText + '\n';
+    }
+    return text;
+  };
+
+  const processFiles = useCallback(async (files: FileList | File[]) => {
+    setErrorMessage(null);
+    const fileArray = Array.from(files);
+
+    const currentTotal =
+      images.reduce((acc, img) => acc + Math.floor(img.data.length * 0.75), 0) +
+      documents.reduce((acc, doc) => acc + doc.size, 0);
+
+    let pendingTotal = currentTotal;
+    const errors: string[] = [];
+    const accepted: { file: File; kind: 'image' | 'docx' | 'pdf' | 'txt' }[] = [];
+
+    for (const file of fileArray) {
+      const kind = classifyFile(file);
+      if (!kind) {
+        errors.push(`${file.name}: unsupported file type`);
+        continue;
+      }
+      if (file.size > PER_FILE_LIMIT) {
+        errors.push(`${file.name}: exceeds 10MB per-file limit`);
+        continue;
+      }
+      if (pendingTotal + file.size > TOTAL_LIMIT) {
+        errors.push(`${file.name}: would exceed 25MB total attachment limit`);
+        continue;
+      }
+      pendingTotal += file.size;
+      accepted.push({ file, kind });
+    }
+
+    if (accepted.length === 0) {
+      if (errors.length > 0) setErrorMessage(errors.join(' • '));
+      return;
+    }
+
+    setUploadProgress(`Processing ${accepted.length} file${accepted.length > 1 ? 's' : ''}...`);
+
+    let processed = 0;
+    const newDocs: DocumentAttachment[] = [];
+
+    for (const { file, kind } of accepted) {
+      try {
+        if (kind === 'image') {
+          const base64 = await readFileAsBase64(file);
+          const mediaType = file.type as ImageAttachment['media_type'];
+          setImages((prev) => [...prev, { data: base64, media_type: mediaType }]);
+          setImagePreviews((prev) => [...prev, `data:${file.type};base64,${base64}`]);
+        } else {
+          let text = '';
+          if (kind === 'docx') text = await extractDocxText(file);
+          else if (kind === 'pdf') text = await extractPdfText(file);
+          else if (kind === 'txt') text = await readFileAsText(file);
+          newDocs.push({ filename: file.name, type: kind, size: file.size, text });
+        }
+        processed++;
+        setUploadProgress(`Processed ${processed}/${accepted.length}...`);
+      } catch (err) {
+        errors.push(`${file.name}: failed to process`);
+      }
+    }
+
+    if (newDocs.length > 0) onAddDocuments(newDocs);
+
+    if (errors.length > 0) {
+      setErrorMessage(errors.join(' • '));
+      setUploadProgress(`Added ${processed} file${processed !== 1 ? 's' : ''}. ${errors.length} failed.`);
+    } else {
+      setUploadProgress(`Added ${processed} file${processed !== 1 ? 's' : ''}`);
+    }
+
+    setTimeout(() => setUploadProgress(null), 3000);
+  }, [images, documents, onAddDocuments]);
+
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
     await processFiles(files);
 
-    // Reset file input
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
@@ -160,7 +266,7 @@ export default function InputArea({ onSubmit, disabled, loading }: InputAreaProp
     }
   }, [disabled, loading, processFiles]);
 
-  // Paste handler for images
+  // Paste handler — image-only by design (per planner constraint)
   useEffect(() => {
     const handlePaste = async (e: ClipboardEvent) => {
       if (disabled || loading) return;
@@ -212,8 +318,8 @@ export default function InputArea({ onSubmit, disabled, loading }: InputAreaProp
                 d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
               />
             </svg>
-            <p className="text-accent-blue font-semibold text-lg">Drop images here</p>
-            <p className="text-accent-blue/70 text-sm">JPEG, PNG, GIF, WebP up to 10MB</p>
+            <p className="text-accent-blue font-semibold text-lg">Drop files here</p>
+            <p className="text-accent-blue/70 text-sm">Images, .docx, .pdf, .txt up to 10MB each</p>
           </div>
         </div>
       )}
@@ -246,11 +352,25 @@ export default function InputArea({ onSubmit, disabled, loading }: InputAreaProp
         </div>
       )}
 
-      {/* Image Previews */}
-      {imagePreviews.length > 0 && (
+      {/* Inline error */}
+      {errorMessage && (
+        <div className="mb-2 px-3 py-2 rounded-lg bg-accent-red/10 border border-accent-red/40 text-xs text-accent-red flex items-start justify-between gap-2">
+          <span>{errorMessage}</span>
+          <button
+            onClick={() => setErrorMessage(null)}
+            className="text-accent-red/70 hover:text-accent-red flex-shrink-0"
+            aria-label="Dismiss error"
+          >
+            ×
+          </button>
+        </div>
+      )}
+
+      {/* Attachment chip row (above textarea) */}
+      {hasAttachments && (
         <div className="flex gap-2 mb-3 flex-wrap">
           {imagePreviews.map((preview, index) => (
-            <div key={index} className="relative group animate-scale-in">
+            <div key={`img-${index}`} className="relative group animate-scale-in">
               <img
                 src={preview}
                 alt={`Upload ${index + 1}`}
@@ -259,6 +379,7 @@ export default function InputArea({ onSubmit, disabled, loading }: InputAreaProp
               <button
                 onClick={() => removeImage(index)}
                 className="absolute -top-2 -right-2 w-5 h-5 bg-accent-red rounded-full flex items-center justify-center text-white text-xs opacity-0 group-hover:opacity-100 transition-opacity shadow-lg"
+                aria-label="Remove image"
               >
                 ×
               </button>
@@ -269,16 +390,61 @@ export default function InputArea({ onSubmit, disabled, loading }: InputAreaProp
               </div>
             </div>
           ))}
+          {documents.map((doc) => {
+            const lowText = doc.text.length < 50;
+            const carried = !doc.isNew;
+            const titleParts: string[] = [];
+            if (carried) titleParts.push('carried from earlier turn');
+            else titleParts.push('added this turn');
+            titleParts.push(`${doc.text.length} chars extracted`);
+            if (lowText) titleParts.push('low text extraction');
+            return (
+              <div
+                key={doc.id}
+                className={
+                  'flex items-center gap-2 px-3 py-2 rounded-lg bg-bg-tertiary border-2 border-border-primary hover:border-accent-blue transition-colors animate-scale-in ' +
+                  (carried ? 'opacity-60' : '')
+                }
+                title={titleParts.join(' · ')}
+              >
+                {carried ? (
+                  <svg className="w-4 h-4 text-text-muted flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-label="carried from earlier turn">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                  </svg>
+                ) : (
+                  <svg className="w-4 h-4 text-text-secondary flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                )}
+                <div className="flex flex-col">
+                  <span className="text-xs text-text-primary font-medium leading-tight max-w-[180px] truncate">
+                    {doc.filename}
+                  </span>
+                  <span className="text-[10px] text-text-muted font-mono leading-tight">
+                    {doc.type.toUpperCase()} · {formatBytes(doc.size)}
+                    {lowText && <span className="text-accent-red ml-1">· low text</span>}
+                  </span>
+                </div>
+                <button
+                  onClick={() => onRemoveDocument(doc.id)}
+                  className="ml-1 w-5 h-5 rounded-full bg-bg-elevated hover:bg-accent-red hover:text-white text-text-muted flex items-center justify-center text-xs flex-shrink-0 transition-colors"
+                  aria-label={`Remove ${doc.filename}`}
+                >
+                  ×
+                </button>
+              </div>
+            );
+          })}
         </div>
       )}
 
       <div className="flex items-end gap-2 sm:gap-3">
-        {/* Image Upload Button */}
+        {/* Upload Button */}
         <button
           onClick={() => fileInputRef.current?.click()}
           disabled={disabled || loading}
           className="flex-shrink-0 w-9 h-9 sm:w-10 sm:h-10 rounded-lg bg-bg-tertiary border-2 border-border-primary text-text-secondary flex items-center justify-center hover:bg-bg-elevated hover:text-accent-blue hover:border-accent-blue/50 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-          title="Attach image (or drag & drop, or paste)"
+          title="Attach image or document (or drag & drop, or paste image)"
         >
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path
@@ -292,7 +458,7 @@ export default function InputArea({ onSubmit, disabled, loading }: InputAreaProp
         <input
           ref={fileInputRef}
           type="file"
-          accept="image/jpeg,image/png,image/gif,image/webp"
+          accept={ACCEPT_ATTR}
           multiple
           onChange={handleFileSelect}
           className="hidden"
@@ -305,7 +471,7 @@ export default function InputArea({ onSubmit, disabled, loading }: InputAreaProp
             onChange={(e) => setValue(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder={
-              images.length > 0
+              hasAttachments
                 ? "Add a message..."
                 : "Ask a question..."
             }
@@ -316,7 +482,7 @@ export default function InputArea({ onSubmit, disabled, loading }: InputAreaProp
         </div>
         <button
           onClick={handleSubmit}
-          disabled={(!value.trim() && images.length === 0) || disabled || loading}
+          disabled={(!value.trim() && !hasAttachments) || disabled || loading}
           className="flex-shrink-0 w-9 h-9 sm:w-10 sm:h-10 rounded-lg bg-accent-blue text-bg-primary flex items-center justify-center hover:bg-accent-blue/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
         >
           {loading ? (

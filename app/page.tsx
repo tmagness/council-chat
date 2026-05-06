@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { UIMessage, ChatResponse, ImageAttachment, MergeResult } from '@/lib/types';
+import { UIMessage, ChatResponse, ImageAttachment, DocumentAttachment, ClientDocument, MergeResult } from '@/lib/types';
+import { nanoid } from 'nanoid';
 import Header from './components/Header';
 import Sidebar from './components/Sidebar';
 import ShareButton from './components/ShareButton';
@@ -34,6 +35,7 @@ export default function Home() {
   const [threads, setThreads] = useState<Thread[]>([]);
   const [currentThreadId, setCurrentThreadId] = useState<string | null>(null);
   const [messages, setMessages] = useState<UIMessage[]>([]);
+  const [threadDocuments, setThreadDocuments] = useState<ClientDocument[]>([]);
   const [mode, setMode] = useState<Mode>('council');
   const [arbiterEnabled, setArbiterEnabled] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -137,6 +139,7 @@ export default function Home() {
       setThreads((prev) => [newThread, ...prev]);
       setCurrentThreadId(data.thread_id);
       setMessages([]);
+      setThreadDocuments([]);
     } catch (error) {
       console.error('Failed to create thread:', error);
     }
@@ -144,6 +147,7 @@ export default function Home() {
 
   const handleSelectThread = async (threadId: string) => {
     setCurrentThreadId(threadId);
+    setThreadDocuments([]);
     await loadThreadMessages(threadId);
   };
 
@@ -153,6 +157,7 @@ export default function Home() {
       setThreads((prev) => prev.filter((t) => t.id !== threadId));
       // If we deleted the current thread, select another one or create new
       if (currentThreadId === threadId) {
+        setThreadDocuments([]);
         const remaining = threads.filter((t) => t.id !== threadId);
         if (remaining.length > 0) {
           setCurrentThreadId(remaining[0].id);
@@ -171,17 +176,48 @@ export default function Home() {
       await fetch('/api/threads', { method: 'DELETE' });
       setThreads([]);
       setMessages([]);
+      setThreadDocuments([]);
       await createNewThread();
     } catch (error) {
       console.error('Failed to delete all threads:', error);
     }
   };
 
+  // Append newly-extracted documents to the thread stack as isNew=true.
+  const handleAddDocuments = (docs: DocumentAttachment[]) => {
+    setThreadDocuments((prev) => [
+      ...prev,
+      ...docs.map((d) => ({ ...d, id: nanoid(), isNew: true })),
+    ]);
+  };
+
+  // Drop a doc from the going-forward stack. Does not edit historical UIMessages.
+  const handleRemoveDocument = (id: string) => {
+    setThreadDocuments((prev) => prev.filter((d) => d.id !== id));
+  };
+
   const handleSubmit = async (message: string, images: ImageAttachment[] = []) => {
     if (!currentThreadId || loading) return;
 
+    // Documents are tracked at thread level (stacked across turns).
+    // Snapshot the stack at submit time so a re-render mid-fetch can't mutate the payload.
+    const stackSnapshot = threadDocuments;
+    const newThisTurn = stackSnapshot.filter((d) => d.isNew);
+    // Strip client-only fields (id, isNew) before sending to server
+    const wireDocuments: DocumentAttachment[] = stackSnapshot.map(
+      ({ id: _id, isNew: _isNew, ...rest }) => rest
+    );
+
     // Update thread's first message if this is the first message
-    const displayMessage = message || (images.length > 0 ? '[Image]' : '');
+    const displayMessage =
+      message ||
+      (images.length > 0
+        ? '[Image]'
+        : newThisTurn.length > 0
+        ? `[${newThisTurn[0].filename}]`
+        : stackSnapshot.length > 0
+        ? `[${stackSnapshot[0].filename}]`
+        : '');
     setThreads((prev) =>
       prev.map((t) =>
         t.id === currentThreadId && !t.firstMessage
@@ -190,14 +226,23 @@ export default function Home() {
       )
     );
 
-    // Add user message
+    // Add user message — bubble shows only documents NEWLY added on this turn
+    // (delta semantics; carried-over docs are not redrawn on each bubble).
     const userMessage: UIMessage = {
       id: `user-${Date.now()}`,
       role: 'user',
       content: message,
       images: images.length > 0 ? images : undefined,
+      documents:
+        newThisTurn.length > 0
+          ? newThisTurn.map(({ id: _id, isNew: _isNew, ...rest }) => rest)
+          : undefined,
     };
     setMessages((prev) => [...prev, userMessage]);
+
+    // Flip all isNew flags to false — they're now "carried" for any future turn.
+    setThreadDocuments((prev) => prev.map((d) => ({ ...d, isNew: false })));
+
     setLoading(true);
     setError(null);
 
@@ -214,6 +259,7 @@ export default function Home() {
           mode,
           arbiter: arbiterEnabled,
           images: images.length > 0 ? images : undefined,
+          documents: wireDocuments.length > 0 ? wireDocuments : undefined,
         }),
         signal: controller.signal,
       });
@@ -364,6 +410,23 @@ export default function Home() {
                               ))}
                             </div>
                           )}
+                          {msg.documents && msg.documents.length > 0 && (
+                            <div className="flex gap-2 mb-2 flex-wrap">
+                              {msg.documents.map((doc, idx) => (
+                                <div
+                                  key={idx}
+                                  className="flex items-center gap-2 px-2 py-1 rounded-md bg-bg-secondary border border-border-primary text-xs"
+                                  title={`${doc.text.length} chars extracted`}
+                                >
+                                  <svg className="w-3.5 h-3.5 text-text-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                  </svg>
+                                  <span className="text-text-primary font-medium truncate max-w-[180px]">{doc.filename}</span>
+                                  <span className="text-text-muted font-mono">{doc.type.toUpperCase()}</span>
+                                </div>
+                              ))}
+                            </div>
+                          )}
                           {msg.content && <p className="text-sm text-text-primary">{msg.content}</p>}
                         </div>
                       </div>
@@ -488,6 +551,9 @@ export default function Home() {
             onSubmit={handleSubmit}
             disabled={!currentThreadId}
             loading={loading}
+            documents={threadDocuments}
+            onAddDocuments={handleAddDocuments}
+            onRemoveDocument={handleRemoveDocument}
           />
         </main>
       </div>

@@ -14,14 +14,30 @@ import {
   SUPERCHARGED_CLAUDE_SYSTEM_PROMPT,
 } from '@/lib/merge/prompts';
 import { calculateCost, calculateSuperchargedCost, formatCost } from '@/lib/utils/costs';
-import { ChatRequest, ChatResponse, MergeResult, HistoryMessage, ImageAttachment, TavilySearchResult } from '@/lib/types';
+import { ChatRequest, ChatResponse, MergeResult, HistoryMessage, ImageAttachment, DocumentAttachment, TavilySearchResult } from '@/lib/types';
 
 export const maxDuration = 60;
+
+function buildAugmentedUserContent(message: string, documents?: DocumentAttachment[]): string {
+  if (!documents || documents.length === 0) return message;
+
+  const blocks: string[] = [];
+  for (const doc of documents) {
+    const chars = doc.text.length;
+    const header = `[ATTACHMENT filename="${doc.filename}" type="${doc.type}" chars=${chars}]`;
+    blocks.push(`${header}\n${doc.text}\n[/ATTACHMENT]`);
+    if (chars < 50) {
+      blocks.push(`[ATTACHMENT_WARNING: low-text-extraction]`);
+    }
+  }
+  // Attachments block + blank line + user prompt text
+  return `${blocks.join('\n')}\n\n${message}`;
+}
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { thread_id, message, mode, arbiter, images } = body as ChatRequest;
+    const { thread_id, message, mode, arbiter, images, documents } = body as ChatRequest;
 
     // Validate input
     if (!thread_id || !mode) {
@@ -31,10 +47,10 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Require either a message or images
-    if (!message && (!images || images.length === 0)) {
+    // Require either a message, images, or documents
+    if (!message && (!images || images.length === 0) && (!documents || documents.length === 0)) {
       return NextResponse.json(
-        { error: 'Either a message or images are required' },
+        { error: 'Either a message, images, or documents are required' },
         { status: 400 }
       );
     }
@@ -49,12 +65,18 @@ export async function POST(request: NextRequest) {
     // Get thread history (user messages + consensus only)
     const history = await getThreadHistory(thread_id);
 
+    // Build the augmented user content (documents prepended, then prompt)
+    const augmentedUserContent = buildAugmentedUserContent(message, documents);
+
+    // Log once before fan-out so parity is verifiable in server logs
+    console.log('[chat] augmented user content for fan-out:', augmentedUserContent);
+
     // Fetch and prepend project context if available
     const projectContext = await getProjectContext();
     const messagesWithCurrent: HistoryMessage[] = [
       ...(projectContext ? [{ role: 'user' as const, content: `[PROJECT CONTEXT]\n${projectContext}` }] : []),
       ...history,
-      { role: 'user', content: message, images },
+      { role: 'user', content: augmentedUserContent, images },
     ];
 
     let gptResponse: string | null = null;
