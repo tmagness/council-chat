@@ -45,6 +45,23 @@ export interface ImageAttachment {
   media_type: 'image/jpeg' | 'image/png' | 'image/gif' | 'image/webp';
 }
 
+// Document attachment type — text extracted client-side, sent to both providers
+export interface DocumentAttachment {
+  filename: string;
+  type: 'docx' | 'pdf' | 'txt';
+  size: number; // bytes (original file)
+  text: string; // extracted UTF-8 text
+}
+
+// Client-only wrapper for thread-level stacked document state.
+// Carries an id (for stable React keys + remove targeting) and isNew flag
+// (true = added since last submit; false = carried over from a prior turn).
+// Stripped before sending to the server.
+export interface ClientDocument extends DocumentAttachment {
+  id: string;
+  isNew: boolean;
+}
+
 // Tavily search result type
 export interface TavilySearchResult {
   title: string;
@@ -60,6 +77,7 @@ export interface ChatRequest {
   mode: 'council' | 'gpt-only' | 'claude-only' | 'supercharged';
   arbiter: boolean;
   images?: ImageAttachment[];
+  documents?: DocumentAttachment[];
 }
 
 export interface ChatResponse {
@@ -88,6 +106,7 @@ export interface UIMessage {
   role: 'user' | 'assistant';
   content: string;
   images?: ImageAttachment[];
+  documents?: DocumentAttachment[];
   gpt_response?: string | null;
   claude_response?: string | null;
   merge_result?: MergeResult | null;

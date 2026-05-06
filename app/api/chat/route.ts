@@ -14,14 +14,30 @@ import {
   SUPERCHARGED_CLAUDE_SYSTEM_PROMPT,
 } from '@/lib/merge/prompts';
 import { calculateCost, calculateSuperchargedCost, formatCost } from '@/lib/utils/costs';
-import { ChatRequest, ChatResponse, MergeResult, HistoryMessage, ImageAttachment, TavilySearchResult } from '@/lib/types';
+import { ChatRequest, ChatResponse, MergeResult, HistoryMessage, ImageAttachment, DocumentAttachment, TavilySearchResult } from '@/lib/types';
 
-export const maxDuration = 60;
+export const maxDuration = 300;
+
+function buildAugmentedUserContent(message: string, documents?: DocumentAttachment[]): string {
+  if (!documents || documents.length === 0) return message;
+
+  const blocks: string[] = [];
+  for (const doc of documents) {
+    const chars = doc.text.length;
+    const header = `[ATTACHMENT filename="${doc.filename}" type="${doc.type}" chars=${chars}]`;
+    blocks.push(`${header}\n${doc.text}\n[/ATTACHMENT]`);
+    if (chars < 50) {
+      blocks.push(`[ATTACHMENT_WARNING: low-text-extraction]`);
+    }
+  }
+  // Attachments block + blank line + user prompt text
+  return `${blocks.join('\n')}\n\n${message}`;
+}
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { thread_id, message, mode, arbiter, images } = body as ChatRequest;
+    const { thread_id, message, mode, arbiter, images, documents } = body as ChatRequest;
 
     // Validate input
     if (!thread_id || !mode) {
@@ -31,10 +47,10 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Require either a message or images
-    if (!message && (!images || images.length === 0)) {
+    // Require either a message, images, or documents
+    if (!message && (!images || images.length === 0) && (!documents || documents.length === 0)) {
       return NextResponse.json(
-        { error: 'Either a message or images are required' },
+        { error: 'Either a message, images, or documents are required' },
         { status: 400 }
       );
     }
@@ -49,12 +65,18 @@ export async function POST(request: NextRequest) {
     // Get thread history (user messages + consensus only)
     const history = await getThreadHistory(thread_id);
 
+    // Build the augmented user content (documents prepended, then prompt)
+    const augmentedUserContent = buildAugmentedUserContent(message, documents);
+
+    // Log once before fan-out so parity is verifiable in server logs
+    console.log('[chat] augmented user content for fan-out:', augmentedUserContent);
+
     // Fetch and prepend project context if available
     const projectContext = await getProjectContext();
     const messagesWithCurrent: HistoryMessage[] = [
       ...(projectContext ? [{ role: 'user' as const, content: `[PROJECT CONTEXT]\n${projectContext}` }] : []),
       ...history,
-      { role: 'user', content: message, images },
+      { role: 'user', content: augmentedUserContent, images },
     ];
 
     let gptResponse: string | null = null;
@@ -96,9 +118,11 @@ export async function POST(request: NextRequest) {
         finalMode = 'degraded';
         // Skip merge in degraded mode
       } else {
-        // Merge responses
+        // Merge responses. Pass augmentedUserContent (with [ATTACHMENT...] blocks)
+        // so the synthesis layer sees what the providers saw — otherwise it cannot
+        // validate quotes from attached documents and falsely flags them as hallucinations.
         const mergeOutput = await mergeCouncil(
-          message,
+          augmentedUserContent,
           gptResponse,
           claudeResponse,
           history
@@ -108,10 +132,14 @@ export async function POST(request: NextRequest) {
           mergeResult = mergeOutput.result;
           totalClaudeTokens += mergeOutput.tokens_used;
 
-          // Arbiter review if requested - pass full merge result for critique
+          // Arbiter review if requested. Pass augmentedUserContent (with [ATTACHMENT...]
+          // blocks) so the arbiter sees what the providers and merge saw — otherwise
+          // it cannot validate doc-referencing critique and may falsely flag correct
+          // doc-grounded merges as suspect. Mirrors the fix applied to mergeCouncil
+          // and superchargedMerge in d948726.
           if (arbiter) {
             const arbiterOutput = await arbiterReview(
-              message,
+              augmentedUserContent,
               gptResponse,
               claudeResponse,
               mergeResult
@@ -141,9 +169,10 @@ export async function POST(request: NextRequest) {
         return m;
       });
 
-      // Pass 2: Call both providers in parallel (blind independence) with Opus for Claude
+      // Pass 2: Call both providers in parallel (blind independence) with Opus for Claude.
+      // Supercharged GPT side pinned to gpt-4o per scope decision (Council bumped to gpt-5.4 separately).
       const [gptResult, claudeResult] = await Promise.all([
-        callGPT(SUPERCHARGED_GPT_SYSTEM_PROMPT, enhancedMessages),
+        callGPT(SUPERCHARGED_GPT_SYSTEM_PROMPT, enhancedMessages, 'gpt-4o'),
         callClaude(SUPERCHARGED_CLAUDE_SYSTEM_PROMPT, enhancedMessages, 'opus'),
       ]);
 
@@ -168,9 +197,12 @@ export async function POST(request: NextRequest) {
       if (!gptResponse || !claudeResponse) {
         finalMode = 'degraded';
       } else {
-        // Passes 3-5: Multi-pass synthesis with Opus
+        // Passes 3-5: Multi-pass synthesis with Opus.
+        // Pass augmentedUserContent (with [ATTACHMENT...] blocks) so the synthesis
+        // layer sees the document content the providers saw. searchResults still
+        // travels separately for the Tavily-aware merge prompt.
         const superchargedOutput = await superchargedMerge(
-          message,
+          augmentedUserContent,
           gptResponse,
           claudeResponse,
           history,

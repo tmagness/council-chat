@@ -34,9 +34,18 @@ function buildMessageContent(text: string, images?: ImageAttachment[]): string |
   return parts;
 }
 
+// Model identifiers verified against https://developers.openai.com/api/docs/models
+type GPTModel = 'gpt-5.4' | 'gpt-4o';
+
+const MODEL_IDS: Record<GPTModel, string> = {
+  'gpt-5.4': 'gpt-5.4',
+  'gpt-4o': 'gpt-4o',
+};
+
 export async function callGPT(
   systemPrompt: string,
-  messages: HistoryMessage[]
+  messages: HistoryMessage[],
+  model: GPTModel = 'gpt-5.4'
 ): Promise<ProviderResponse | null> {
   try {
     const apiMessages: OpenAIMessage[] = [
@@ -53,11 +62,19 @@ export async function callGPT(
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
       },
+      // GPT-5 reasoning models lock down sampling parameters that gpt-4o accepts:
+      // - 'max_tokens' is rejected; use 'max_completion_tokens' instead
+      // - 'temperature' only accepts the default value (1); omit to let API default apply
+      // - 'reasoning_effort'='low' caps reasoning latency (gpt-5.4 defaults to 'medium')
+      // gpt-4o keeps the legacy contract: max_tokens + temperature: 0.7, no reasoning_effort.
+      // Council is the cost-conscious tier — Supercharged uses Opus + gpt-4o for deep reasoning.
+      // Source: https://developers.openai.com/api/reference/resources/chat/subresources/completions/methods/create
       body: JSON.stringify({
-        model: 'gpt-4o',
+        model: MODEL_IDS[model],
         messages: apiMessages,
-        temperature: 0.7,
-        max_tokens: 4096,
+        ...(model === 'gpt-4o'
+          ? { max_tokens: 4096, temperature: 0.7 }
+          : { max_completion_tokens: 4096, reasoning_effort: 'low' }),
       }),
     });
 
