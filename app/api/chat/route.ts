@@ -163,9 +163,10 @@ export async function POST(request: NextRequest) {
         return m;
       });
 
-      // Pass 2: Call both providers in parallel (blind independence) with Opus for Claude
+      // Pass 2: Call both providers in parallel (blind independence) with Opus for Claude.
+      // Supercharged GPT side pinned to gpt-4o per scope decision (Council bumped to gpt-5.4 separately).
       const [gptResult, claudeResult] = await Promise.all([
-        callGPT(SUPERCHARGED_GPT_SYSTEM_PROMPT, enhancedMessages),
+        callGPT(SUPERCHARGED_GPT_SYSTEM_PROMPT, enhancedMessages, 'gpt-4o'),
         callClaude(SUPERCHARGED_CLAUDE_SYSTEM_PROMPT, enhancedMessages, 'opus'),
       ]);
 

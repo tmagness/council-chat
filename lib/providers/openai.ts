@@ -34,9 +34,18 @@ function buildMessageContent(text: string, images?: ImageAttachment[]): string |
   return parts;
 }
 
+// Model identifiers verified against https://developers.openai.com/api/docs/models
+type GPTModel = 'gpt-5.4' | 'gpt-4o';
+
+const MODEL_IDS: Record<GPTModel, string> = {
+  'gpt-5.4': 'gpt-5.4',
+  'gpt-4o': 'gpt-4o',
+};
+
 export async function callGPT(
   systemPrompt: string,
-  messages: HistoryMessage[]
+  messages: HistoryMessage[],
+  model: GPTModel = 'gpt-5.4'
 ): Promise<ProviderResponse | null> {
   try {
     const apiMessages: OpenAIMessage[] = [
@@ -54,7 +63,7 @@ export async function callGPT(
         'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
       },
       body: JSON.stringify({
-        model: 'gpt-4o',
+        model: MODEL_IDS[model],
         messages: apiMessages,
         temperature: 0.7,
         max_tokens: 4096,

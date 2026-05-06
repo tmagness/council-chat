@@ -41,8 +41,10 @@ function buildMessageContent(text: string, images?: ImageAttachment[]): string |
 
 type ClaudeModel = 'sonnet' | 'opus';
 
+// Model identifiers verified against https://platform.claude.com/docs/en/docs/about-claude/models
+// Sonnet bumped to 4.6 (200k→1M context) for Council. Opus left on legacy 4.x for Supercharged tier (out of scope).
 const MODEL_IDS: Record<ClaudeModel, string> = {
-  sonnet: 'claude-sonnet-4-20250514',
+  sonnet: 'claude-sonnet-4-6',
   opus: 'claude-opus-4-20250514',
 };
 
