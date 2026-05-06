@@ -132,10 +132,14 @@ export async function POST(request: NextRequest) {
           mergeResult = mergeOutput.result;
           totalClaudeTokens += mergeOutput.tokens_used;
 
-          // Arbiter review if requested - pass full merge result for critique
+          // Arbiter review if requested. Pass augmentedUserContent (with [ATTACHMENT...]
+          // blocks) so the arbiter sees what the providers and merge saw — otherwise
+          // it cannot validate doc-referencing critique and may falsely flag correct
+          // doc-grounded merges as suspect. Mirrors the fix applied to mergeCouncil
+          // and superchargedMerge in d948726.
           if (arbiter) {
             const arbiterOutput = await arbiterReview(
-              message,
+              augmentedUserContent,
               gptResponse,
               claudeResponse,
               mergeResult
